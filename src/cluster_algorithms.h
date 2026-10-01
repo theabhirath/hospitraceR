@@ -27,7 +27,8 @@ class UpperTriangularMatrix {
         UpperTriangularMatrix(int n) : data((n * (n - 1)) / 2), size(n) {}
         T* operator[](int row) {
             if (row < size - 1) {
-                return &data[(row * (size - 1)) - ((row * (row + 1)) / 2)];
+                // row r starts after rows 0..r-1, of lengths size-1, ..., size-r
+                return &data[(row * (size - 1)) - ((row * (row - 1)) / 2)];
             } else {
                 return nullptr; // The last row has no i<j pairs
             }

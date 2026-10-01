@@ -88,6 +88,10 @@ get_tn_clusters_sv_index <- function(
     dates,
     tree
 ) {
+    # Sequence ids are names: integer ids would subscript seq2pt by position.
+    adm_seqs <- as.character(adm_seqs)
+    adm_pos_pt_seqs <- as.character(adm_pos_pt_seqs)
+
     ####################################################################################
     # 1. Compute the shared variant matrix #####
     # For each pair of isolates, we compute the number of positions where:

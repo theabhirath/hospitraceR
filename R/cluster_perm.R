@@ -250,6 +250,9 @@ calculate_overlap_fractions <- function(
 #' @noRd
 create_eligibility_matrices <- function(clusters, seq2pt, adm_seqs, adm_pos_pt_seqs) {
     cluster_names <- names(clusters)
+    # Sequence ids are names: integer ids would subscript clusters/seq2pt by position.
+    adm_seqs <- as.character(adm_seqs)
+    adm_pos_pt_seqs <- as.character(adm_pos_pt_seqs)
 
     # Identify index patients who started clusters vs those who didn't
     index_pt_start_seqs <- unlist(sapply(adm_seqs, function(seq_id) {

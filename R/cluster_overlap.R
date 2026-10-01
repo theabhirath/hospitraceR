@@ -53,7 +53,8 @@ isolate_isolate_overlap <- function(isolate_lookup, trace_mat) {
                 next
             }
             # get the time range between the donor and recipient
-            cols <- as.integer(last_surv):as.integer(recipient_date)
+            # days start at 0, trace columns at 1 (named "0", "1", ...)
+            cols <- as.integer(last_surv):as.integer(recipient_date) + 1L
             # get the trace matrix subset for the donor and recipient
             pt_sub <- trace_mat[c(row_i, row_j), cols, drop = FALSE]
             # count the number of days where the donor and recipient are both present
@@ -137,7 +138,8 @@ isolate_isolate_sequential_overlap <- function(isolate_lookup, trace_mat) {
                 next
             }
             # get the time range between the donor and recipient
-            cols <- as.integer(last_surv):as.integer(recipient_date)
+            # days start at 0, trace columns at 1 (named "0", "1", ...)
+            cols <- as.integer(last_surv):as.integer(recipient_date) + 1L
             # get the trace matrix subset for the donor and recipient
             pt_sub <- trace_mat[c(row_i, row_j), cols, drop = FALSE]
             # if there is ANY spatiotemporal (concurrent) overlap, this pair is
