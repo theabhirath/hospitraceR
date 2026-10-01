@@ -69,6 +69,10 @@ get_tn_clusters_snp_thresh <- function(
 #' @param dates A named vector of isolate dates, named by sequence ID.
 #' @param tree A phylogenetic tree of class `phylo` over the same isolates, e.g. from
 #'             [get_phylo_tree()]. Its first tip is taken as the outgroup, matching `dna_aln`.
+#' @param snp_thresh SNP distance above which a threshold-free cluster is broken up. Within each
+#'             cluster, isolates connected through a chain of pairwise distances at or below this
+#'             value (single-linkage components) are kept together; disconnected groups are split
+#'             into separate clusters, all retained. `Inf` (the default) never breaks a cluster.
 #'
 #' @return A numeric vector giving the cluster each isolate belongs to.
 #'
@@ -78,6 +82,7 @@ get_tn_clusters_snp_thresh <- function(
 #'             \doi{10.1016/S2666-5247(22)00115-X}
 #'
 #' @importFrom ape subtrees drop.tip
+#' @importFrom stats hclust as.dist cutree
 #' @export
 get_tn_clusters_sv_index <- function(
     dna_aln,
@@ -86,7 +91,8 @@ get_tn_clusters_sv_index <- function(
     adm_pos_pt_seqs,
     seq2pt,
     dates,
-    tree
+    tree,
+    snp_thresh = Inf
 ) {
     # Sequence ids are names: integer ids would subscript seq2pt by position.
     adm_seqs <- as.character(adm_seqs)
@@ -268,6 +274,29 @@ get_tn_clusters_sv_index <- function(
 
     # log completion of phase to standard output
     message("Phase 4 complete: Cluster assignment.")
+
+    ####################################################################################
+    # 5. Break clusters that span more than the SNV threshold #####
+    # Within each cluster, isolates linked through a chain of pairwise distances <= snp_thresh
+    # (single-linkage components) stay together; disconnected groups are split out as their own
+    # clusters. All resulting groups are kept. With snp_thresh = Inf this is a no-op.
+    ####################################################################################
+    if (is.finite(snp_thresh)) {
+        for (cl in setdiff(unique(clusters), 0)) {
+            members <- isolate_names[clusters == cl]
+            if (length(members) < 2) {
+                next
+            }
+            sub_comp <- cutree(
+                hclust(as.dist(snp_dist[members, members]), method = "single"),
+                h = snp_thresh
+            )
+            # keep the largest component under this cluster's id; give the rest fresh ids
+            for (comp in setdiff(unique(sub_comp), which.max(tabulate(sub_comp)))) {
+                clusters[members[sub_comp == comp]] <- max(clusters) + 1
+            }
+        }
+    }
 
     # Renumber the clusters sequentially starting from 1, leaving the unclustered isolates (value 0)
     # untouched -- each one is given its own id rather than being grouped. Renumbering is decoupled
