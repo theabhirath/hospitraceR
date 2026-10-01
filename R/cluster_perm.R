@@ -17,6 +17,8 @@
 #' @param room_trace A matrix with room-level trace data (same structure as `facility_trace`).
 #' @param nperm Number of permutations to perform.
 #' @param num_cores Number of cores for parallel processing.
+#' @param include_singleton_acq Whether to evaluate all acquisitions, including those not
+#'                              classified to be a part of multi-patient clusters.
 #'
 #' @returns A list containing:
 #'     \itemize{
@@ -32,7 +34,8 @@
 #'       counts (numerators)
 #'     \item `permuted_n_converts`: A numeric array (same dimensions) of per-cluster convert counts
 #'       (denominators)
-#'     \item `valid_clusters`: A numeric vector of cluster IDs that have more than one patient
+#'     \item `valid_clusters`: A numeric vector of the cluster IDs tested — those with more than one
+#'       patient, plus the single-patient acquisition clusters when `include_singleton_acq` is TRUE
 #'     }
 #'
 #'   The numerator/denominator components let callers compute a pooled,
@@ -57,7 +60,8 @@ cluster_overlap_perm_test <- function(
     floor_trace,
     room_trace,
     nperm = 1000,
-    num_cores = detectCores() - 1
+    num_cores = detectCores() - 1,
+    include_singleton_acq = FALSE
 ) {
     cluster_names <- names(clusters)
 
@@ -71,8 +75,8 @@ cluster_overlap_perm_test <- function(
         surv_df = surv_df
     )
 
-    # Get non-single-patient clusters to analyze
-    valid_clusters <- get_non_single_patient_clusters(observed_lookup)
+    # Clusters to analyze: multi-patient, plus singleton acquisitions when asked for
+    valid_clusters <- overlap_clusters(observed_lookup, include_singleton_acq)
 
     if (length(valid_clusters) == 0) {
         # Classed so callers can skip an ST with nothing to test without also
@@ -112,7 +116,8 @@ cluster_overlap_perm_test <- function(
         iso_overlap_room,
         seq_overlap_facility,
         seq_overlap_floor,
-        seq_overlap_room
+        seq_overlap_room,
+        include_singleton_acq
     )
 
     # Per-cluster numerator/denominator counts behind each observed fraction.
@@ -164,7 +169,7 @@ cluster_overlap_perm_test <- function(
             perm_lookup$cluster <- perm_clust[perm_lookup$isolate_id]
 
             # Get valid clusters for this permutation
-            perm_valid_clusters <- get_non_single_patient_clusters(perm_lookup)
+            perm_valid_clusters <- overlap_clusters(perm_lookup, include_singleton_acq)
 
             # Calculate overlap fractions using precomputed overlaps
             calculate_overlap_fractions(
@@ -175,7 +180,8 @@ cluster_overlap_perm_test <- function(
                 iso_overlap_room,
                 seq_overlap_facility,
                 seq_overlap_floor,
-                seq_overlap_room
+                seq_overlap_room,
+                include_singleton_acq
             )
         },
         mc.cores = num_cores
@@ -241,19 +247,23 @@ calculate_overlap_fractions <- function(
     iso_overlap_room,
     seq_overlap_facility,
     seq_overlap_floor,
-    seq_overlap_room
+    seq_overlap_room,
+    include_singleton_acq = FALSE
 ) {
     # Filter lookup to valid clusters for overlap calculation
     lookup_filtered <- isolate_lookup[isolate_lookup$cluster %in% valid_clusters, ]
 
     # Use precomputed isolate-isolate overlaps to calculate cluster-isolate overlap
-    cluster_overlap_facility <- cluster_isolate_overlap(lookup_filtered, iso_overlap_facility)
-    cluster_overlap_floor <- cluster_isolate_overlap(lookup_filtered, iso_overlap_floor)
-    cluster_overlap_room <- cluster_isolate_overlap(lookup_filtered, iso_overlap_room)
+    cl_overlap <- function(iso_overlap_df) {
+        cluster_isolate_overlap(lookup_filtered, iso_overlap_df, include_singleton_acq)
+    }
+    cluster_overlap_facility <- cl_overlap(iso_overlap_facility)
+    cluster_overlap_floor <- cl_overlap(iso_overlap_floor)
+    cluster_overlap_room <- cl_overlap(iso_overlap_room)
 
-    seq_cl_facility <- cluster_isolate_overlap(lookup_filtered, seq_overlap_facility)
-    seq_cl_floor <- cluster_isolate_overlap(lookup_filtered, seq_overlap_floor)
-    seq_cl_room <- cluster_isolate_overlap(lookup_filtered, seq_overlap_room)
+    seq_cl_facility <- cl_overlap(seq_overlap_facility)
+    seq_cl_floor <- cl_overlap(seq_overlap_floor)
+    seq_cl_room <- cl_overlap(seq_overlap_room)
 
     # Calculate fraction of converts with overlap
     list(

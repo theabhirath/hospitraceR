@@ -16,7 +16,8 @@ cluster_overlap_perm_test(
   floor_trace,
   room_trace,
   nperm = 1000,
-  num_cores = detectCores() - 1
+  num_cores = detectCores() - 1,
+  include_singleton_acq = FALSE
 )
 }
 \arguments{
@@ -43,6 +44,15 @@ cluster_overlap_perm_test(
 \item{nperm}{Number of permutations to perform.}
 
 \item{num_cores}{Number of cores for parallel processing.}
+
+\item{include_singleton_acq}{Whether to evaluate all acquisitions, including those sitting in
+single-patient clusters, for an overlap explanation. FALSE (the default) tests only
+multi-patient clusters. When TRUE, single-patient acquisition clusters
+(\code{\link[=get_singleton_acq_clusters]{get_singleton_acq_clusters()}}) are added to the tested set both for the observed data and
+inside every permutation; since a singleton cluster has no other patient to overlap with, each
+such acquisition enters as a convert event without an overlap explanation, so the fractions are
+over all acquisitions rather than only the clustered ones. Singleton clusters of
+admission-positive patients stay excluded either way.}
 }
 \value{
 A list containing:
@@ -59,7 +69,8 @@ per-cluster fractions
 counts (numerators)
 \item \code{permuted_n_converts}: A numeric array (same dimensions) of per-cluster convert counts
 (denominators)
-\item \code{valid_clusters}: A numeric vector of cluster IDs that have more than one patient
+\item \code{valid_clusters}: A numeric vector of the cluster IDs tested — those with more than one
+patient, plus the single-patient acquisition clusters when \code{include_singleton_acq} is TRUE
 }
 
 The numerator/denominator components let callers compute a pooled,
