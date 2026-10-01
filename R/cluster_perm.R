@@ -39,6 +39,9 @@
 #'   convert-weighted fraction (`sum(n_overlap) / sum(n_converts)`) across clusters
 #'   and sequence types, rather than averaging the per-cluster fractions.
 #'
+#'   A permutation whose cluster assignment strands (capacity too concentrated to place
+#'   every patient) stops the whole test with an error.
+#'
 #' @importFrom parallel detectCores
 #' @importFrom pbmcapply pbmclapply
 #' @export
@@ -72,11 +75,16 @@ cluster_overlap_perm_test <- function(
     valid_clusters <- get_non_single_patient_clusters(observed_lookup)
 
     if (length(valid_clusters) == 0) {
-        stop("No clusters with more than one patient found.")
+        # Classed so callers can skip an ST with nothing to test without also
+        # swallowing real failures.
+        stop(errorCondition(
+            "No clusters with more than one patient found.",
+            class = "no_valid_clusters"
+        ))
     }
 
     # =========================================================================
-    # OPTIMIZATION: Precompute isolate-isolate overlaps once
+    # Precompute isolate-isolate overlaps once
     # The overlap between isolates depends only on patient locations over time,
     # not on cluster assignments. So we compute this expensive O(n^2) operation
     # once and reuse it for all permutations.
@@ -145,6 +153,11 @@ cluster_overlap_perm_test <- function(
                     convert = convert_per_cluster
                 )
             )
+            if (is.null(perm_clust)) {
+                stop(
+                    "cluster assignment stranded (capacity too concentrated to place every patient)"
+                )
+            }
 
             # Fast lookup update: just update the cluster column
             perm_lookup <- base_lookup
@@ -183,6 +196,13 @@ cluster_overlap_perm_test <- function(
     # permuted per-cluster fraction, kept so aggregation can pool them.
     perm_n_overlap_array <- array(dim = arr_dim, dimnames = arr_dimnames)
     perm_n_converts_array <- array(dim = arr_dim, dimnames = arr_dimnames)
+
+    # With mc.cores > 1, pbmclapply returns a failed worker as a try-error element
+    # instead of raising; re-raise the first so it isn't indexed into below.
+    failed <- vapply(perm_results, inherits, logical(1), "try-error")
+    if (any(failed)) {
+        stop(conditionMessage(attr(perm_results[[which(failed)[1]]], "condition")))
+    }
 
     vc_chr <- as.character(valid_clusters)
     for (i in seq_len(nperm)) {
@@ -320,6 +340,7 @@ pt_per_cluster <- function(elig_mat, clusters) {
 }
 
 #' Assign patients to clusters randomly while preserving structure
+#' @return The updated assignment, or NULL if the draw stranded a patient.
 #' @noRd
 assign_pt_clusters <- function(elig_vec, cluster_per_pt, pt_per_cluster, rand_clusters) {
     if (length(cluster_per_pt) == 0) {
@@ -330,7 +351,12 @@ assign_pt_clusters <- function(elig_vec, cluster_per_pt, pt_per_cluster, rand_cl
 
     for (pt in names(sort(cluster_per_pt, decreasing = TRUE))) {
         pt_clust_ids <- unique(elig_vec[elig_vec[, "patient"] == pt, "comb"])
-        cluster_assign <- sample(names_pt_per_cluster[pt_per_cluster > 0], length(pt_clust_ids))
+        avail <- names_pt_per_cluster[pt_per_cluster > 0]
+        # Earlier draws used up the clusters this patient needs: stranded.
+        if (length(avail) < length(pt_clust_ids)) {
+            return(NULL)
+        }
+        cluster_assign <- sample(avail, length(pt_clust_ids))
         pt_per_cluster[cluster_assign] <- pt_per_cluster[cluster_assign] - 1
 
         for (pt_c_i in seq_along(pt_clust_ids)) {
@@ -347,29 +373,18 @@ assign_pt_clusters <- function(elig_vec, cluster_per_pt, pt_per_cluster, rand_cl
 assign_permuted_clusters <- function(cluster_names, elig_mats, cluster_per_pt, pt_per_clust) {
     perm_clust <- setNames(rep(-1, length(cluster_names)), cluster_names)
 
-    # Assign converts first
-    perm_clust <- assign_pt_clusters(
-        elig_mats$convert,
-        cluster_per_pt$convert,
-        pt_per_clust$convert,
-        perm_clust
-    )
-
-    # Then index patients who started clusters
-    perm_clust <- assign_pt_clusters(
-        elig_mats$index_start,
-        cluster_per_pt$index_start,
-        pt_per_clust$index_start,
-        perm_clust
-    )
-
-    # Then index patients who didn't start clusters
-    perm_clust <- assign_pt_clusters(
-        elig_mats$index_not_start,
-        cluster_per_pt$index_not_start,
-        pt_per_clust$index_not_start,
-        perm_clust
-    )
+    # Converts first, then index patients who started clusters, then those who didn't
+    for (stage in c("convert", "index_start", "index_not_start")) {
+        perm_clust <- assign_pt_clusters(
+            elig_mats[[stage]],
+            cluster_per_pt[[stage]],
+            pt_per_clust[[stage]],
+            perm_clust
+        )
+        if (is.null(perm_clust)) {
+            return(NULL)
+        }
+    }
 
     perm_clust
 }

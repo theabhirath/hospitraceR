@@ -65,6 +65,9 @@ counts (numerators)
 The numerator/denominator components let callers compute a pooled,
 convert-weighted fraction (\code{sum(n_overlap) / sum(n_converts)}) across clusters
 and sequence types, rather than averaging the per-cluster fractions.
+
+A permutation whose cluster assignment strands (capacity too concentrated to place
+every patient) stops the whole test with an error.
 }
 \description{
 Performs a permutation test to assess whether the observed fraction of converts
