@@ -150,6 +150,11 @@ get_tn_clusters_sv_index <- function(
     # no more than one index that occurs before converts.
     #####################################################################################
     patient_seq_map <- split(names(seq2pt), seq2pt)
+    # An import-only group should be identified and handled as it cannot form a valid
+    # transmission cluster in this method, since it has no acquisitions
+    is_import_only <- function(tips) {
+        all(tips %in% adm_pos_pt_seqs) && length(unique(seq2pt[tips])) >= 2
+    }
     subtree_metrics <- lapply(seq_along(sub_trees), function(st_i) {
         st <- sub_trees[[st_i]]
         tip_labels <- st$tip.label
@@ -192,7 +197,11 @@ get_tn_clusters_sv_index <- function(
         )
         # compute cluster score if there are defining variants and index isolates are not overly
         # distant from all other sequences in the subtree (i.e. their shared variant counts are nearly identical)
-        score <- if (sub_trees_dv[st_i] > 0 && length(unique(shared_counts_rep)) <= 1) {
+        score <- if (
+            sub_trees_dv[st_i] > 0 &&
+                length(unique(shared_counts_rep)) <= 1 &&
+                !is_import_only(tip_labels)
+        ) {
             # all patients that are not represented in this subtree by an intake-positive
             patients_non_rep <- setdiff(unique(seq2pt), seq2pt[unlist(ip_rep)])
             # reward intake-positives that could have started a cluster
@@ -295,6 +304,19 @@ get_tn_clusters_sv_index <- function(
             for (comp in setdiff(unique(sub_comp), which.max(tabulate(sub_comp)))) {
                 clusters[members[sub_comp == comp]] <- max(clusters) + 1
             }
+        }
+    }
+
+    ####################################################################################
+    # 6. Dissolve import-only clusters #####
+    # Phase 3 rejects import-only subtrees, but a final cluster can still end up import-only: phase 4
+    # can give a subtree's converts to a different subtree, and phase 5 splits without re-validating.
+    # Their isolates are left unclustered.
+    ####################################################################################
+    for (cl in setdiff(unique(clusters), 0)) {
+        members <- isolate_names[clusters == cl]
+        if (is_import_only(members)) {
+            clusters[members] <- 0
         }
     }
 
