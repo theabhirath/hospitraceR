@@ -84,4 +84,5 @@ reference:
       - get_phylo_tree
       - get_isolate_lookup
       - get_non_single_patient_clusters
+      - get_singleton_acq_clusters
       - remove_singleton_clusters
