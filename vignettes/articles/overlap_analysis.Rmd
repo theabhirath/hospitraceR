@@ -121,33 +121,25 @@ perm <- cluster_overlap_perm_test(
 )
 ```
 
-The test returns the observed and permuted fractions, together with the numerator/denominator counts behind each. We pool those counts — across all clusters for this one dataset — into an observed fraction and a null distribution per trace type. (A real analysis would run the same test across many sequence types and pool over all of them.)
+The test returns, for the observed clustering and for every permutation, the number of converts with overlap (`n_overlap`) and the number of converts (`n_converts`), each summed over the tested clusters. Their ratio is the pooled overlap fraction per trace type. (A real analysis would run the same test across many sequence types and sum the counts over all of them before dividing.)
 
 ```{r perm_aggregate}
-trace_types <- c("facility", "floor", "room", "seq_facility", "seq_floor", "seq_room")
+trace_types <- rownames(perm$observed)
 nperm <- 200
 
 # observed pooled fraction (and counts) per trace type
-obs_df <- do.call(rbind, lapply(trace_types, function(tt) {
-    numer <- sum(perm$observed_n_overlap[[tt]], na.rm = TRUE)
-    denom <- sum(perm$observed_n_converts[[tt]], na.rm = TRUE)
-    data.frame(
-        trace_type = tt,
-        overlap_fraction = ifelse(denom > 0, numer / denom, NA_real_),
-        n_overlap = numer,
-        n_converts = denom
-    )
-}))
+obs_df <- data.frame(
+    trace_type = trace_types,
+    overlap_fraction = perm$observed[, "n_overlap"] / perm$observed[, "n_converts"],
+    perm$observed,
+    row.names = NULL
+)
 
 # null distribution: pooled fraction per trace type, per permutation
-perm_df <- do.call(rbind, lapply(seq_along(trace_types), function(j) {
-    fr <- vapply(seq_len(nperm), function(p) {
-        numer <- sum(perm$permuted_n_overlap[, j, p], na.rm = TRUE)
-        denom <- sum(perm$permuted_n_converts[, j, p], na.rm = TRUE)
-        if (denom > 0) numer / denom else NA_real_
-    }, numeric(1))
-    data.frame(trace_type = trace_types[j], overlap_fraction = fr)
-}))
+perm_df <- data.frame(
+    trace_type = rep(trace_types, each = nperm),
+    overlap_fraction = as.vector(t(perm$permuted[, "n_overlap", ] / perm$permuted[, "n_converts", ]))
+)
 
 # one-sided p-value: how often the null meets or exceeds the observed fraction
 pvals <- vapply(seq_along(trace_types), function(j) {

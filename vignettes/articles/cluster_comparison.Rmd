@@ -93,32 +93,32 @@ cont_table <- cluster_contingency_table(clusters_snp, clusters_sv)
 dim(cont_table)
 ```
 
-Because the raw assignments place every unclustered isolate in its own singleton cluster, the full table is large and almost entirely zero, with most of its mass on a near-diagonal of $1 \times 1$ blocks. The structure is much easier to see if we restrict to the non-singleton clusters and look at a corner of the table. The diagonal blocks – clusters of size two and three that both methods recover identically – are where the two clusterings agree:
+If the two clusterings agree more than random chance, we expect the table to be mostly sparse. We can subset the first few rows and columns to get a sense of the structure:
 
 ```{r contingency_corner}
 cont_table_shared <- cluster_contingency_table(clusters_snp_shared, clusters_sv_shared)
 cont_table_shared[1:8, 1:8]
 ```
 
-Reading a table like this directly does not scale: the example data alone produces a table with over a hundred rows and columns. What we want is a single number that summarises how well the row partition and the column partition agree. That is exactly what the Adjusted Rand Index and Adjusted Mutual Information provide.
+The table thus gives us a base from which to base our comparisons. We've already seen one way to visualize this, using a heatmap. But we can also perform certain operations on this table to get a single number to indicate the concordance between the two clusterings. The two most common metrics are the **Adjusted Rand Index** and the **Adjusted Mutual Information**.
 
 # Adjusted Rand Index (ARI)
 
 The **Adjusted Rand Index** measures how often the two clusterings agree on whether a *pair* of isolates belongs together, corrected for the agreement we would expect from two random partitions of the same sizes (Hubert and Arabie, 1985). It ranges from $-1$ to $1$: a value of $1$ means the two clusterings are identical, $0$ means they agree no more than chance, and negative values mean they agree *less* than chance.
 
-There are two entry points. `adjusted_rand_index()` takes the two cluster assignments directly and builds the contingency table for you:
+There are two functions which calculate the ARI from different inputs. `adjusted_rand_index()` takes the two cluster assignments directly:
 
 ```{r ari}
 adjusted_rand_index(clusters_snp, clusters_sv)
 ```
 
-If you already have a contingency table – for example because you are computing several metrics from it, or sweeping over a parameter and want to avoid rebuilding the table each time – you can call `ari_from_contingency()` on the table instead.
+If you already have a contingency table — for example because you are computing several metrics from it, or sweeping over a parameter and want to avoid rebuilding the table each time — you can call `ari_from_contingency()` on the table instead.
 
 # Adjusted Mutual Information (AMI)
 
 The **Adjusted Mutual Information** measures agreement from an information-theoretic angle: how much knowing an isolate's cluster under one assignment tells you about its cluster under the other, again corrected for chance (Vinh, Epps and Bailey, 2010). It ranges from $0$ (the two clusterings are independent) to $1$ (they are identical). Where ARI counts agreement over *pairs* of isolates, AMI is sensitive to how the isolates are distributed across clusters of different sizes, so the two metrics need not move together.
 
-As with ARI, there is a convenience wrapper that takes the assignments directly and a variant (`ami_from_contingency()`) that works from a precomputed contingency table:
+As with ARI, there is a convenience wrapper that takes the assignments directly and a variant (`ami_from_contingency()`) that works from a precomputed contingency table.
 
 ```{r ami}
 adjusted_mutual_information(clusters_snp, clusters_sv)
@@ -128,7 +128,7 @@ Both ARI and AMI here are well above what we would expect by chance, confirming 
 
 # Epidemiological concordance: fraction of converts with the same source
 
-ARI and AMI are purely structural — they compare partitions without any knowledge of the underlying epidemiology. But in a transmission study, the question we actually care about is often not "are the clusters the same shape?" but "do the two methods agree on *who acquired the organism from whom?*". The **fraction of converts with the same source** (FSS) answers exactly this.
+ARI and AMI are purely structural, and compare partitions without any knowledge of the underlying epidemiology. But when studying transmission, the question we actually care about is often not "are the clusters the same shape?" but "do the two methods agree on *who acquired the organism from whom?*". The **fraction of converts with the same source** (FSS) answers exactly this, by using the epidemiological information that is often available to us in transmission studies.
 
 A *convert* (also referred to as an *acquisition*) is a patient who is inferred to have acquired the organism during their stay (rather than carrying it on admission). The *source* of a convert is an admission-positive patient to whom the convert's acquisition can ultimately be traced back. `hospitraceR` derives these roles from each clustering via `cluster_patient_categorization()`, using admission status, surveillance cultures and collection dates. `fraction_convert_same_source()` asks the question: for the set of common converts between two clusterings, how many of them have the same inferred source in both clusterings?
 
