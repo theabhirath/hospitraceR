@@ -16,7 +16,8 @@ fraction_convert_same_source(
   adm_seqs,
   dates,
   surv_df,
-  converts_without_assigned_source = FALSE
+  converts_without_assigned_source = FALSE,
+  debug = FALSE
 )
 ```
 

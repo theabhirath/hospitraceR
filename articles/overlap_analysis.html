@@ -169,12 +169,12 @@ result into a tidy data frame, one row per cluster-patient pair:</p>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">patient_cat_df</span><span class="op">$</span><span class="va">category</span><span class="op">)</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;                  adm-pos          adm-pos-convert                  convert </span></span>
-<span><span class="co">#&gt;                       31                        4                       81 </span></span>
-<span><span class="co">#&gt;                    index multiply-colonized-index        secondary-convert </span></span>
-<span><span class="co">#&gt;                       67                       10                       12 </span></span>
-<span><span class="co">#&gt;               weak-index </span></span>
-<span><span class="co">#&gt;                        4</span></span></code></pre></div>
+<span><span class="co">#&gt;                  adm-pos          adm-pos-convert        ambiguous-convert </span></span>
+<span><span class="co">#&gt;                       12                        4                        3 </span></span>
+<span><span class="co">#&gt;                  convert                    index multiply-colonized-index </span></span>
+<span><span class="co">#&gt;                       82                       79                       12 </span></span>
+<span><span class="co">#&gt;        secondary-convert               weak-index </span></span>
+<span><span class="co">#&gt;                       11                        4</span></span></code></pre></div>
 <p>The converts are the patients we most want to explain: each one
 acquired the organism somewhere, and the location traces are how we look
 for that “somewhere”.</p>
@@ -195,12 +195,12 @@ before the recipient’s positive isolate was collected.</p>
 <code class="sourceCode R"><span><span class="va">iso_overlap</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/isolate_isolate_overlap.html">isolate_isolate_overlap</a></span><span class="op">(</span><span class="va">isolate_lookup</span>, <span class="va">facility_trace</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">iso_overlap</span><span class="op">)</span></span>
 <span><span class="co">#&gt;   iso_donor iso_recipient overlap_days</span></span>
-<span><span class="co">#&gt; 1       102           105            0</span></span>
+<span><span class="co">#&gt; 1       102           105            1</span></span>
 <span><span class="co">#&gt; 2       102           109            8</span></span>
-<span><span class="co">#&gt; 3       102            10            1</span></span>
+<span><span class="co">#&gt; 3       102            10            2</span></span>
 <span><span class="co">#&gt; 4       102           112           24</span></span>
 <span><span class="co">#&gt; 5       102           114            0</span></span>
-<span><span class="co">#&gt; 6       102           115           26</span></span></code></pre></div>
+<span><span class="co">#&gt; 6       102           115           25</span></span></code></pre></div>
 <p>This is <em>concurrent</em> overlap: the two patients were physically
 co-located at the same time.
 <code><a href="../reference/isolate_isolate_sequential_overlap.html">isolate_isolate_sequential_overlap()</a></code> instead captures
@@ -236,18 +236,12 @@ result:</p>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">overlap_cat_df</span><span class="op">$</span><span class="va">category</span><span class="op">)</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;                        all-admission-positive </span></span>
-<span><span class="co">#&gt;                                             6 </span></span>
-<span><span class="co">#&gt;                          false-negative-index </span></span>
-<span><span class="co">#&gt;                                             2 </span></span>
 <span><span class="co">#&gt;                                  inexplicable </span></span>
 <span><span class="co">#&gt;                                             2 </span></span>
 <span><span class="co">#&gt;                          missing-intermediate </span></span>
-<span><span class="co">#&gt;                                             7 </span></span>
+<span><span class="co">#&gt;                                             6 </span></span>
 <span><span class="co">#&gt;                                missing-source </span></span>
-<span><span class="co">#&gt;                                             2 </span></span>
-<span><span class="co">#&gt;                      multiply-colonized-index </span></span>
-<span><span class="co">#&gt;                                             1 </span></span>
+<span><span class="co">#&gt;                                             4 </span></span>
 <span><span class="co">#&gt; multiply-colonized-index-missing-intermediate </span></span>
 <span><span class="co">#&gt;                                             1 </span></span>
 <span><span class="co">#&gt;                            patient-to-patient </span></span>
@@ -338,12 +332,12 @@ test across many sequence types and pool over all of them.)</p>
 <span><span class="va">obs_df</span><span class="op">$</span><span class="va">p_value</span> <span class="op">&lt;-</span> <span class="va">pvals</span></span>
 <span><span class="va">obs_df</span></span>
 <span><span class="co">#&gt;     trace_type overlap_fraction n_overlap n_converts     p_value</span></span>
-<span><span class="co">#&gt; 1     facility        0.8157895        62         76 0.004975124</span></span>
-<span><span class="co">#&gt; 2        floor        0.6578947        50         76 0.004975124</span></span>
-<span><span class="co">#&gt; 3         room        0.1973684        15         76 0.004975124</span></span>
-<span><span class="co">#&gt; 4 seq_facility        0.4605263        35         76 1.000000000</span></span>
-<span><span class="co">#&gt; 5    seq_floor        0.4342105        33         76 1.000000000</span></span>
-<span><span class="co">#&gt; 6     seq_room        0.1052632         8         76 0.995024876</span></span></code></pre></div>
+<span><span class="co">#&gt; 1     facility               NA         0          0 0.004975124</span></span>
+<span><span class="co">#&gt; 2        floor               NA         0          0 0.004975124</span></span>
+<span><span class="co">#&gt; 3         room               NA         0          0 0.004975124</span></span>
+<span><span class="co">#&gt; 4 seq_facility               NA         0          0 0.004975124</span></span>
+<span><span class="co">#&gt; 5    seq_floor               NA         0          0 0.004975124</span></span>
+<span><span class="co">#&gt; 6     seq_room               NA         0          0 0.004975124</span></span></code></pre></div>
 <p><code><a href="https://theabhirath.github.io/hospitraceRVisualize/reference/plot_overlap_perm_test.html">hospitraceRVisualize::plot_overlap_perm_test()</a></code> draws the
 core figure: a violin of the null distribution for each trace type, with
 the observed fraction as a red diamond and the observed counts labelled
@@ -400,7 +394,7 @@ Analysis.”</span> <em>The Lancet Microbe</em> 3 (9): e652–62. <a href="https
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

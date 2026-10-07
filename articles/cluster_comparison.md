@@ -102,7 +102,7 @@ isolates.
 
 cont_table <- cluster_contingency_table(clusters_snp, clusters_sv)
 dim(cont_table)
-#> [1]  81 110
+#> [1]  81 119
 ```
 
 Because the raw assignments place every unclustered isolate in its own
@@ -117,15 +117,15 @@ are where the two clusterings agree:
 
 cont_table_shared <- cluster_contingency_table(clusters_snp_shared, clusters_sv_shared)
 cont_table_shared[1:8, 1:8]
-#>    2 6 7 8 9 10 11 12
-#> 2  3 0 0 0 0  0  0  0
-#> 3  0 0 3 0 0  0  0  0
-#> 4  0 4 0 0 0  0  0  0
-#> 5  0 0 0 3 0  0  0  0
-#> 6  0 0 0 0 2  0  0  0
-#> 8  0 0 0 0 0  0  2  0
-#> 9  0 0 0 0 0  0  0  2
-#> 13 0 0 0 0 0  0  0  0
+#>    6 7 8 9 10 11 13 14
+#> 2  0 0 0 0  0  0  0  0
+#> 3  0 3 0 0  0  0  0  2
+#> 4  4 0 0 0  0  0  0  0
+#> 5  0 0 3 0  0  0  0  0
+#> 6  0 0 0 2  0  0  0  0
+#> 8  0 0 0 0  0  2  0  0
+#> 9  0 0 0 0  0  0  2  0
+#> 13 0 0 0 0  0  0  0  0
 ```
 
 Reading a table like this directly does not scale: the example data
@@ -151,7 +151,7 @@ table for you:
 ``` r
 
 adjusted_rand_index(clusters_snp, clusters_sv)
-#> [1] 0.3026967
+#> [1] 0.2994514
 ```
 
 If you already have a contingency table – for example because you are
@@ -179,7 +179,7 @@ that works from a precomputed contingency table:
 ``` r
 
 adjusted_mutual_information(clusters_snp, clusters_sv)
-#> [1] 0.4823642
+#> [1] 0.4679436
 ```
 
 Both ARI and AMI here are well above what we would expect by chance,
@@ -223,7 +223,7 @@ fss <- fraction_convert_same_source(
     converts_without_assigned_source = TRUE
 )
 fss
-#> [1] 0.65
+#> [1] 0.6304348
 ```
 
 So even where the two methods carve up the isolates slightly
@@ -281,12 +281,12 @@ sweep_df <- do.call(rbind, lapply(thresholds, function(thr) {
 
 sweep_df
 #>   threshold        ARI        AMI       FSS
-#> 1         2 0.56000482 0.49994662 0.9000000
-#> 2         5 0.52724828 0.63716676 0.8000000
-#> 3        10 0.30269669 0.48236421 0.6500000
-#> 4        15 0.10134457 0.27600420 0.4782609
-#> 5        20 0.03159573 0.13685107 0.2142857
-#> 6        25 0.01744880 0.08133707 0.2000000
+#> 1         2 0.54807393 0.49057105 0.4791667
+#> 2         5 0.52443708 0.62154651 0.6702128
+#> 3        10 0.29945136 0.46794365 0.6304348
+#> 4        15 0.10023133 0.26798077 0.3186813
+#> 5        20 0.03166727 0.13554119 0.2197802
+#> 6        25 0.01765685 0.08239109 0.1777778
 ```
 
 To plot all three metrics together, we reshape the results into long

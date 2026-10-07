@@ -178,7 +178,7 @@ restricts itself to the common isolates.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cont_table</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/cluster_contingency_table.html">cluster_contingency_table</a></span><span class="op">(</span><span class="va">clusters_snp</span>, <span class="va">clusters_sv</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">cont_table</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1]  81 110</span></span></code></pre></div>
+<span><span class="co">#&gt; [1]  81 119</span></span></code></pre></div>
 <p>Because the raw assignments place every unclustered isolate in its
 own singleton cluster, the full table is large and almost entirely zero,
 with most of its mass on a near-diagonal of <span class="math inline">1
@@ -189,15 +189,15 @@ methods recover identically – are where the two clusterings agree:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cont_table_shared</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/cluster_contingency_table.html">cluster_contingency_table</a></span><span class="op">(</span><span class="va">clusters_snp_shared</span>, <span class="va">clusters_sv_shared</span><span class="op">)</span></span>
 <span><span class="va">cont_table_shared</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">8</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">8</span><span class="op">]</span></span>
-<span><span class="co">#&gt;    2 6 7 8 9 10 11 12</span></span>
-<span><span class="co">#&gt; 2  3 0 0 0 0  0  0  0</span></span>
-<span><span class="co">#&gt; 3  0 0 3 0 0  0  0  0</span></span>
-<span><span class="co">#&gt; 4  0 4 0 0 0  0  0  0</span></span>
-<span><span class="co">#&gt; 5  0 0 0 3 0  0  0  0</span></span>
-<span><span class="co">#&gt; 6  0 0 0 0 2  0  0  0</span></span>
-<span><span class="co">#&gt; 8  0 0 0 0 0  0  2  0</span></span>
-<span><span class="co">#&gt; 9  0 0 0 0 0  0  0  2</span></span>
-<span><span class="co">#&gt; 13 0 0 0 0 0  0  0  0</span></span></code></pre></div>
+<span><span class="co">#&gt;    6 7 8 9 10 11 13 14</span></span>
+<span><span class="co">#&gt; 2  0 0 0 0  0  0  0  0</span></span>
+<span><span class="co">#&gt; 3  0 3 0 0  0  0  0  2</span></span>
+<span><span class="co">#&gt; 4  4 0 0 0  0  0  0  0</span></span>
+<span><span class="co">#&gt; 5  0 0 3 0  0  0  0  0</span></span>
+<span><span class="co">#&gt; 6  0 0 0 2  0  0  0  0</span></span>
+<span><span class="co">#&gt; 8  0 0 0 0  0  2  0  0</span></span>
+<span><span class="co">#&gt; 9  0 0 0 0  0  0  2  0</span></span>
+<span><span class="co">#&gt; 13 0 0 0 0  0  0  0  0</span></span></code></pre></div>
 <p>Reading a table like this directly does not scale: the example data
 alone produces a table with over a hundred rows and columns. What we
 want is a single number that summarises how well the row partition and
@@ -219,7 +219,7 @@ the two cluster assignments directly and builds the contingency table
 for you:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/adjusted_rand_index.html">adjusted_rand_index</a></span><span class="op">(</span><span class="va">clusters_snp</span>, <span class="va">clusters_sv</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 0.3026967</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 0.2994514</span></span></code></pre></div>
 <p>If you already have a contingency table – for example because you are
 computing several metrics from it, or sweeping over a parameter and want
 to avoid rebuilding the table each time – you can call
@@ -242,7 +242,7 @@ assignments directly and a variant (<code><a href="../reference/ami_from_conting
 that works from a precomputed contingency table:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/adjusted_mutual_information.html">adjusted_mutual_information</a></span><span class="op">(</span><span class="va">clusters_snp</span>, <span class="va">clusters_sv</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 0.4823642</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 0.4679436</span></span></code></pre></div>
 <p>Both ARI and AMI here are well above what we would expect by chance,
 confirming the visual impression from the heatmap: the two methods agree
 on many more isolates than by chance. However, they’re not close to 1,
@@ -281,7 +281,7 @@ the same inferred source in both clusterings?</p>
 <span>    converts_without_assigned_source <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span>
 <span><span class="va">fss</span></span>
-<span><span class="co">#&gt; [1] 0.65</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 0.6304348</span></span></code></pre></div>
 <p>So even where the two methods carve up the isolates slightly
 differently, they agree on the inferred source for a large majority of
 converts.</p>
@@ -332,12 +332,12 @@ entry points are convenient here:</p>
 <span></span>
 <span><span class="va">sweep_df</span></span>
 <span><span class="co">#&gt;   threshold        ARI        AMI       FSS</span></span>
-<span><span class="co">#&gt; 1         2 0.56000482 0.49994662 0.9000000</span></span>
-<span><span class="co">#&gt; 2         5 0.52724828 0.63716676 0.8000000</span></span>
-<span><span class="co">#&gt; 3        10 0.30269669 0.48236421 0.6500000</span></span>
-<span><span class="co">#&gt; 4        15 0.10134457 0.27600420 0.4782609</span></span>
-<span><span class="co">#&gt; 5        20 0.03159573 0.13685107 0.2142857</span></span>
-<span><span class="co">#&gt; 6        25 0.01744880 0.08133707 0.2000000</span></span></code></pre></div>
+<span><span class="co">#&gt; 1         2 0.54807393 0.49057105 0.4791667</span></span>
+<span><span class="co">#&gt; 2         5 0.52443708 0.62154651 0.6702128</span></span>
+<span><span class="co">#&gt; 3        10 0.29945136 0.46794365 0.6304348</span></span>
+<span><span class="co">#&gt; 4        15 0.10023133 0.26798077 0.3186813</span></span>
+<span><span class="co">#&gt; 5        20 0.03166727 0.13554119 0.2197802</span></span>
+<span><span class="co">#&gt; 6        25 0.01765685 0.08239109 0.1777778</span></span></code></pre></div>
 <p>To plot all three metrics together, we reshape the results into long
 format and draw one line per metric:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
@@ -385,7 +385,7 @@ Analysis.”</span> <em>The Lancet Microbe</em> 3 (9): e652–62. <a href="https
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

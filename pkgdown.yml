@@ -1,5 +1,5 @@
 pandoc: 3.8.3
-pkgdown: 2.2.0
+pkgdown: 2.2.1
 pkgdown_sha: ~
 articles:
   articles/cluster_comparison: cluster_comparison.html
@@ -7,7 +7,7 @@ articles:
   articles/input_data: input_data.html
   articles/overlap_analysis: overlap_analysis.html
   articles/trace_phylogeny: trace_phylogeny.html
-last_built: 2026-07-07T14:34Z
+last_built: 2026-10-07T14:59Z
 urls:
   reference: https://theabhirath.github.io/hospitraceR/reference
   article: https://theabhirath.github.io/hospitraceR/articles

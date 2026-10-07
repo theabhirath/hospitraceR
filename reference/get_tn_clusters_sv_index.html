@@ -74,7 +74,8 @@ that other isolates don't have.</p>
 <span>  <span class="va">adm_pos_pt_seqs</span>,</span>
 <span>  <span class="va">seq2pt</span>,</span>
 <span>  <span class="va">dates</span>,</span>
-<span>  <span class="va">tree</span></span>
+<span>  <span class="va">tree</span>,</span>
+<span>  snp_thresh <span class="op">=</span> <span class="cn">Inf</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -112,6 +113,13 @@ collected at intake or later; a superset of <code>adm_seqs</code>.</p></dd>
 <dd><p>A phylogenetic tree of class <code>phylo</code> over the same isolates, e.g. from
 <code><a href="get_phylo_tree.html">get_phylo_tree()</a></code>. Its first tip is taken as the outgroup, matching <code>dna_aln</code>.</p></dd>
 
+
+<dt id="arg-snp-thresh">snp_thresh<a class="anchor" aria-label="anchor" href="#arg-snp-thresh"></a></dt>
+<dd><p>SNP distance above which a threshold-free cluster is broken up. Within each
+cluster, isolates connected through a chain of pairwise distances at or below this
+value (single-linkage components) are kept together; disconnected groups are split
+into separate clusters, all retained. <code>Inf</code> (the default) never breaks a cluster.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -134,7 +142,7 @@ health-care settings: A genomic epidemiology analysis. The Lancet Microbe, 3(9),
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

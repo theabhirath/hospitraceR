@@ -73,7 +73,8 @@ Tests overlap at facility, floor, and room levels.</p>
 <span>  <span class="va">floor_trace</span>,</span>
 <span>  <span class="va">room_trace</span>,</span>
 <span>  nperm <span class="op">=</span> <span class="fl">1000</span>,</span>
-<span>  num_cores <span class="op">=</span> <span class="fu">detectCores</span><span class="op">(</span><span class="op">)</span> <span class="op">-</span> <span class="fl">1</span></span>
+<span>  num_cores <span class="op">=</span> <span class="fu">detectCores</span><span class="op">(</span><span class="op">)</span> <span class="op">-</span> <span class="fl">1</span>,</span>
+<span>  include_singleton_acq <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -128,25 +129,25 @@ Tests overlap at facility, floor, and room levels.</p>
 <dt id="arg-num-cores">num_cores<a class="anchor" aria-label="anchor" href="#arg-num-cores"></a></dt>
 <dd><p>Number of cores for parallel processing.</p></dd>
 
+
+<dt id="arg-include-singleton-acq">include_singleton_acq<a class="anchor" aria-label="anchor" href="#arg-include-singleton-acq"></a></dt>
+<dd><p>Whether to evaluate all acquisitions, including those not
+classified to be a part of multi-patient clusters.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A list containing:</p><ul><li><p><code>observed</code>: A named list with facility, floor, room, seq_facility, seq_floor,
-seq_room per-cluster fractions for observed data</p></li>
-<li><p><code>observed_n_overlap</code>: A named list (same trace types) of per-cluster converts-with-overlap
-counts (numerators) behind the observed fractions</p></li>
-<li><p><code>observed_n_converts</code>: A named list (same trace types) of per-cluster convert counts
-(denominators) behind the observed fractions</p></li>
-<li><p><code>permuted</code>: A numeric array of dimensions (n_clusters, 6 trace_types, nperm) of
-per-cluster fractions</p></li>
-<li><p><code>permuted_n_overlap</code>: A numeric array (same dimensions) of per-cluster converts-with-overlap
-counts (numerators)</p></li>
-<li><p><code>permuted_n_converts</code>: A numeric array (same dimensions) of per-cluster convert counts
-(denominators)</p></li>
-<li><p><code>valid_clusters</code>: A numeric vector of cluster IDs that have more than one patient</p></li>
-</ul><p>The numerator/denominator components let callers compute a pooled,
-convert-weighted fraction (<code>sum(n_overlap) / sum(n_converts)</code>) across clusters
-and sequence types, rather than averaging the per-cluster fractions.</p>
+    <p>A list containing:</p><ul><li><p><code>observed</code>: A matrix with one row per trace type (facility, floor, room,
+seq_facility, seq_floor, seq_room) and columns <code>n_overlap</code> (converts with overlap) and
+<code>n_converts</code> (converts), each summed over the tested clusters</p></li>
+<li><p><code>permuted</code>: A numeric array of dimensions (trace type, count, nperm) holding the same
+two sums for every permutation</p></li>
+<li><p><code>valid_clusters</code>: A numeric vector of the cluster IDs tested — those with more than one
+patient, plus the single-patient acquisition clusters when <code>include_singleton_acq</code> is TRUE</p></li>
+</ul><p>The pooled, convert-weighted overlap fraction is <code>n_overlap / n_converts</code>; summing the counts
+across sequence types before dividing pools them further.</p>
+<p>A permutation whose cluster assignment strands (capacity too concentrated to place
+every patient) stops the whole test with an error.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
@@ -158,7 +159,7 @@ and sequence types, rather than averaging the per-cluster fractions.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

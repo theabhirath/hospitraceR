@@ -9,10 +9,18 @@ or
 Admission-positive isolates are reported as `NA`, since they were not
 acquired in the facility.
 
+Only multi-patient clusters are reported by default; set
+`include_singleton_acq` to also account for acquisitions sitting in
+single-patient clusters.
+
 ## Usage
 
 ``` r
-cluster_isolate_overlap(isolate_lookup, iso_overlap_df)
+cluster_isolate_overlap(
+  isolate_lookup,
+  iso_overlap_df,
+  include_singleton_acq = FALSE
+)
 ```
 
 ## Arguments
@@ -27,6 +35,11 @@ cluster_isolate_overlap(isolate_lookup, iso_overlap_df)
 
   A data frame of isolate-pair overlaps, from
   [`isolate_isolate_overlap()`](https://theabhirath.github.io/hospitraceR/reference/isolate_isolate_overlap.md).
+
+- include_singleton_acq:
+
+  Whether to evaluate all acquisitions, including those not classified
+  to be a part of multi-patient clusters.
 
 ## Value
 

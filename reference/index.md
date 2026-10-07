@@ -85,5 +85,7 @@ A collection of utility functions for this package.
   assignments
 - [`get_non_single_patient_clusters()`](https://theabhirath.github.io/hospitraceR/reference/get_non_single_patient_clusters.md)
   : Get clusters containing more than one patient
+- [`get_singleton_acq_clusters()`](https://theabhirath.github.io/hospitraceR/reference/get_singleton_acq_clusters.md)
+  : Get single-patient clusters that represent an acquisition
 - [`remove_singleton_clusters()`](https://theabhirath.github.io/hospitraceR/reference/remove_singleton_clusters.md)
   : Remove singleton clusters from a vector of cluster assignments

@@ -94,12 +94,12 @@ patient_cat_df <- flatten_cluster_patient_categorization(patient_cats)
 
 table(patient_cat_df$category)
 #> 
-#>                  adm-pos          adm-pos-convert                  convert 
-#>                       31                        4                       81 
-#>                    index multiply-colonized-index        secondary-convert 
-#>                       67                       10                       12 
-#>               weak-index 
-#>                        4
+#>                  adm-pos          adm-pos-convert        ambiguous-convert 
+#>                       12                        4                        3 
+#>                  convert                    index multiply-colonized-index 
+#>                       82                       79                       12 
+#>        secondary-convert               weak-index 
+#>                       11                        4
 ```
 
 The converts are the patients we most want to explain: each one acquired
@@ -124,12 +124,12 @@ collected.
 iso_overlap <- isolate_isolate_overlap(isolate_lookup, facility_trace)
 head(iso_overlap)
 #>   iso_donor iso_recipient overlap_days
-#> 1       102           105            0
+#> 1       102           105            1
 #> 2       102           109            8
-#> 3       102            10            1
+#> 3       102            10            2
 #> 4       102           112           24
 #> 5       102           114            0
-#> 6       102           115           26
+#> 6       102           115           25
 ```
 
 This is *concurrent* overlap: the two patients were physically
@@ -172,18 +172,12 @@ overlap_cat_df <- flatten_cluster_overlap_categorization(overlap_cats)
 
 table(overlap_cat_df$category)
 #> 
-#>                        all-admission-positive 
-#>                                             6 
-#>                          false-negative-index 
-#>                                             2 
 #>                                  inexplicable 
 #>                                             2 
 #>                          missing-intermediate 
-#>                                             7 
+#>                                             6 
 #>                                missing-source 
-#>                                             2 
-#>                      multiply-colonized-index 
-#>                                             1 
+#>                                             4 
 #> multiply-colonized-index-missing-intermediate 
 #>                                             1 
 #>                            patient-to-patient 
@@ -283,12 +277,12 @@ pvals <- vapply(seq_along(trace_types), function(j) {
 obs_df$p_value <- pvals
 obs_df
 #>     trace_type overlap_fraction n_overlap n_converts     p_value
-#> 1     facility        0.8157895        62         76 0.004975124
-#> 2        floor        0.6578947        50         76 0.004975124
-#> 3         room        0.1973684        15         76 0.004975124
-#> 4 seq_facility        0.4605263        35         76 1.000000000
-#> 5    seq_floor        0.4342105        33         76 1.000000000
-#> 6     seq_room        0.1052632         8         76 0.995024876
+#> 1     facility               NA         0          0 0.004975124
+#> 2        floor               NA         0          0 0.004975124
+#> 3         room               NA         0          0 0.004975124
+#> 4 seq_facility               NA         0          0 0.004975124
+#> 5    seq_floor               NA         0          0 0.004975124
+#> 6     seq_room               NA         0          0 0.004975124
 ```
 
 [`hospitraceRVisualize::plot_overlap_perm_test()`](https://theabhirath.github.io/hospitraceRVisualize/reference/plot_overlap_perm_test.html)

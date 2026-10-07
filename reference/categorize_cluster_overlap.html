@@ -8,10 +8,12 @@ all other converts in the cluster.
 for the patient after admission and there is overlap explanation for all other isolates in the cluster.
 &quot;missing-intermediate&quot;: if the index isolate is admission-positive but at least one other convert
 in the cluster has no overlap explanation.
-&quot;false-negative-index&quot;: if the index isolate is not admission-positive but there is overlap explanation for
-all other converts in the cluster barring one (deemed to be the false negative index).
-&quot;missing-source&quot;: if the index isolate is not admission-positive and there is no overlap explanation for
-more than one convert in the cluster.
+&quot;weak-index-missing-intermediate&quot;: if the index isolate is a weak index (not admission-positive
+but the first surveillance for the patient after admission) and at least one other convert in the
+cluster has no overlap explanation.
+&quot;missing-source&quot;: if the index isolate is in the cluster but is neither admission-positive nor a weak
+index (the index isolate is not the patient's first surveillance culture), so the cluster's source was
+not sampled. The other isolates' overlap explanations are not consulted.
 &quot;multiply-colonized-index&quot;: if the index isolate is not in the cluster but is admission-positive, this is
 a &quot;multiply-colonized index&quot; if there is overlap explanation for all other isolates in the cluster.
 &quot;multiply-colonized-index-missing-intermediate&quot;: if the index isolate is not in the cluster but is
@@ -30,10 +32,12 @@ all other converts in the cluster.
 for the patient after admission and there is overlap explanation for all other isolates in the cluster.
 &quot;missing-intermediate&quot;: if the index isolate is admission-positive but at least one other convert
 in the cluster has no overlap explanation.
-&quot;false-negative-index&quot;: if the index isolate is not admission-positive but there is overlap explanation for
-all other converts in the cluster barring one (deemed to be the false negative index).
-&quot;missing-source&quot;: if the index isolate is not admission-positive and there is no overlap explanation for
-more than one convert in the cluster.
+&quot;weak-index-missing-intermediate&quot;: if the index isolate is a weak index (not admission-positive
+but the first surveillance for the patient after admission) and at least one other convert in the
+cluster has no overlap explanation.
+&quot;missing-source&quot;: if the index isolate is in the cluster but is neither admission-positive nor a weak
+index (the index isolate is not the patient's first surveillance culture), so the cluster's source was
+not sampled. The other isolates' overlap explanations are not consulted.
 &quot;multiply-colonized-index&quot;: if the index isolate is not in the cluster but is admission-positive, this is
 a &quot;multiply-colonized index&quot; if there is overlap explanation for all other isolates in the cluster.
 &quot;multiply-colonized-index-missing-intermediate&quot;: if the index isolate is not in the cluster but is
@@ -102,10 +106,12 @@ all other converts in the cluster.</p></li>
 for the patient after admission and there is overlap explanation for all other isolates in the cluster.</p></li>
 <li><p>"missing-intermediate": if the index isolate is admission-positive but at least one other convert
 in the cluster has no overlap explanation.</p></li>
-<li><p>"false-negative-index": if the index isolate is not admission-positive but there is overlap explanation for
-all other converts in the cluster barring one (deemed to be the false negative index).</p></li>
-<li><p>"missing-source": if the index isolate is not admission-positive and there is no overlap explanation for
-more than one convert in the cluster.</p></li>
+<li><p>"weak-index-missing-intermediate": if the index isolate is a weak index (not admission-positive
+but the first surveillance for the patient after admission) and at least one other convert in the
+cluster has no overlap explanation.</p></li>
+<li><p>"missing-source": if the index isolate is in the cluster but is neither admission-positive nor a weak
+index (the index isolate is not the patient's first surveillance culture), so the cluster's source was
+not sampled. The other isolates' overlap explanations are not consulted.</p></li>
 <li><p>"multiply-colonized-index": if the index isolate is not in the cluster but is admission-positive, this is
 a "multiply-colonized index" if there is overlap explanation for all other isolates in the cluster.</p></li>
 <li><p>"multiply-colonized-index-missing-intermediate": if the index isolate is not in the cluster but is
@@ -154,7 +160,7 @@ relevant epidemiological information. See <code><a href="get_isolate_lookup.html
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

@@ -19,7 +19,8 @@ cluster_overlap_perm_test(
   floor_trace,
   room_trace,
   nperm = 1000,
-  num_cores = detectCores() - 1
+  num_cores = detectCores() - 1,
+  include_singleton_acq = FALSE
 )
 ```
 
@@ -76,33 +77,30 @@ cluster_overlap_perm_test(
 
   Number of cores for parallel processing.
 
+- include_singleton_acq:
+
+  Whether to evaluate all acquisitions, including those not classified
+  to be a part of multi-patient clusters.
+
 ## Value
 
 A list containing:
 
-- `observed`: A named list with facility, floor, room, seq_facility,
-  seq_floor, seq_room per-cluster fractions for observed data
+- `observed`: A matrix with one row per trace type (facility, floor,
+  room, seq_facility, seq_floor, seq_room) and columns `n_overlap`
+  (converts with overlap) and `n_converts` (converts), each summed over
+  the tested clusters
 
-- `observed_n_overlap`: A named list (same trace types) of per-cluster
-  converts-with-overlap counts (numerators) behind the observed
-  fractions
+- `permuted`: A numeric array of dimensions (trace type, count, nperm)
+  holding the same two sums for every permutation
 
-- `observed_n_converts`: A named list (same trace types) of per-cluster
-  convert counts (denominators) behind the observed fractions
+- `valid_clusters`: A numeric vector of the cluster IDs tested — those
+  with more than one patient, plus the single-patient acquisition
+  clusters when `include_singleton_acq` is TRUE
 
-- `permuted`: A numeric array of dimensions (n_clusters, 6 trace_types,
-  nperm) of per-cluster fractions
+The pooled, convert-weighted overlap fraction is
+`n_overlap / n_converts`; summing the counts across sequence types
+before dividing pools them further.
 
-- `permuted_n_overlap`: A numeric array (same dimensions) of per-cluster
-  converts-with-overlap counts (numerators)
-
-- `permuted_n_converts`: A numeric array (same dimensions) of
-  per-cluster convert counts (denominators)
-
-- `valid_clusters`: A numeric vector of cluster IDs that have more than
-  one patient
-
-The numerator/denominator components let callers compute a pooled,
-convert-weighted fraction (`sum(n_overlap) / sum(n_converts)`) across
-clusters and sequence types, rather than averaging the per-cluster
-fractions.
+A permutation whose cluster assignment strands (capacity too
+concentrated to place every patient) stops the whole test with an error.

@@ -13,7 +13,8 @@ transmission:
 
 - convert: had surveillance before first positive
 
-- adm-pos: first positive is in cluster and is first surveillance
+- adm-pos: first positive is in cluster, is first surveillance, and is
+  admission positive
 
 - adm-pos-convert: first positive is not in cluster but is first
   surveillance
@@ -25,7 +26,8 @@ transmission:
   is first surveillance
 
 - ambiguous-convert: first positive is culture-only (strain unknown) and
-  had prior surveillance
+  had prior surveillance, or is in cluster and is first surveillance but
+  not admission positive
 
 ## Usage
 

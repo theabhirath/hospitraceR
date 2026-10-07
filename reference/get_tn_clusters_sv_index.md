@@ -18,7 +18,8 @@ get_tn_clusters_sv_index(
   adm_pos_pt_seqs,
   seq2pt,
   dates,
-  tree
+  tree,
+  snp_thresh = Inf
 )
 ```
 
@@ -57,6 +58,14 @@ get_tn_clusters_sv_index(
   A phylogenetic tree of class `phylo` over the same isolates, e.g. from
   [`get_phylo_tree()`](https://theabhirath.github.io/hospitraceR/reference/get_phylo_tree.md).
   Its first tip is taken as the outgroup, matching `dna_aln`.
+
+- snp_thresh:
+
+  SNP distance above which a threshold-free cluster is broken up. Within
+  each cluster, isolates connected through a chain of pairwise distances
+  at or below this value (single-linkage components) are kept together;
+  disconnected groups are split into separate clusters, all retained.
+  `Inf` (the default) never breaks a cluster.
 
 ## Value
 

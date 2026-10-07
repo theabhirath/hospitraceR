@@ -4,22 +4,24 @@ index: admission positive, earliest isolate, isolate in cluster
 multiply-colonized-index: admission positive, earliest isolate, isolate not in cluster
 weak-index: not admission positive, but first surveillance is positive and in cluster
 convert: had surveillance before first positive
-adm-pos: first positive is in cluster and is first surveillance
+adm-pos: first positive is in cluster, is first surveillance, and is admission positive
 adm-pos-convert: first positive is not in cluster but is first surveillance
 secondary-convert: first positive is not in cluster and had prior surveillance
 ambiguous-adm-pos: first positive is culture-only (strain unknown) and is first surveillance
-ambiguous-convert: first positive is culture-only (strain unknown) and had prior surveillance
+ambiguous-convert: first positive is culture-only (strain unknown) and had prior surveillance,
+or is in cluster and is first surveillance but not admission positive
 
 "><meta property="og:description" content="Categorizes each patient in a cluster based on their role in transmission:
 index: admission positive, earliest isolate, isolate in cluster
 multiply-colonized-index: admission positive, earliest isolate, isolate not in cluster
 weak-index: not admission positive, but first surveillance is positive and in cluster
 convert: had surveillance before first positive
-adm-pos: first positive is in cluster and is first surveillance
+adm-pos: first positive is in cluster, is first surveillance, and is admission positive
 adm-pos-convert: first positive is not in cluster but is first surveillance
 secondary-convert: first positive is not in cluster and had prior surveillance
 ambiguous-adm-pos: first positive is culture-only (strain unknown) and is first surveillance
-ambiguous-convert: first positive is culture-only (strain unknown) and had prior surveillance
+ambiguous-convert: first positive is culture-only (strain unknown) and had prior surveillance,
+or is in cluster and is first surveillance but not admission positive
 
 "></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -76,11 +78,12 @@ ambiguous-convert: first positive is culture-only (strain unknown) and had prior
 <li><p>multiply-colonized-index: admission positive, earliest isolate, isolate not in cluster</p></li>
 <li><p>weak-index: not admission positive, but first surveillance is positive and in cluster</p></li>
 <li><p>convert: had surveillance before first positive</p></li>
-<li><p>adm-pos: first positive is in cluster and is first surveillance</p></li>
+<li><p>adm-pos: first positive is in cluster, is first surveillance, and is admission positive</p></li>
 <li><p>adm-pos-convert: first positive is not in cluster but is first surveillance</p></li>
 <li><p>secondary-convert: first positive is not in cluster and had prior surveillance</p></li>
 <li><p>ambiguous-adm-pos: first positive is culture-only (strain unknown) and is first surveillance</p></li>
-<li><p>ambiguous-convert: first positive is culture-only (strain unknown) and had prior surveillance</p></li>
+<li><p>ambiguous-convert: first positive is culture-only (strain unknown) and had prior surveillance,
+or is in cluster and is first surveillance but not admission positive</p></li>
 </ul></div>
 
     <div class="section level2">
@@ -115,7 +118,7 @@ patient_id to their category within that cluster.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>
