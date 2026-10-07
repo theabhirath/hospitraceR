@@ -394,30 +394,26 @@ fraction_convert_same_source_from_lookups <- function(
 
             # The source must be an index, weak index, or multiply-colonized index
             sources <- names(cats)[cats %in% c("index", "weak-index", "multiply-colonized-index")]
-            if (converts_without_assigned_source) {
-                # If the flag is set, we will allow converts with no assigned source to be included
-                # in the mapping with an NA source. This means that if there are no sources, we will
-                # add an NA source for each convert in this cluster.
-                if (length(sources) == 0) {
+            if (length(sources) == 0) {
+                # With the flag set we still record the convert, with an NA source, so that
+                # "neither assignment could name a source" is visible downstream; without it
+                # such converts are skipped entirely.
+                if (converts_without_assigned_source) {
                     for (convert in converts) {
                         convert_to_sources[[convert]] <- c(convert_to_sources[[convert]], NA)
                     }
-                    next
                 }
-            } else {
-                # If the flag is not set, we will skip converts with no assigned source
-                if (length(sources) == 0) {
-                    next
-                }
-                source <- sources[1]
-                converts <- setdiff(converts, source)
-                if (length(converts) == 0) {
-                    next
-                }
+                next
+            }
 
-                for (conv in converts) {
-                    convert_to_sources[[conv]] <- c(convert_to_sources[[conv]], source)
-                }
+            source <- sources[1]
+            converts <- setdiff(converts, source)
+            if (length(converts) == 0) {
+                next
+            }
+
+            for (conv in converts) {
+                convert_to_sources[[conv]] <- c(convert_to_sources[[conv]], source)
             }
         }
 
@@ -460,11 +456,19 @@ fraction_convert_same_source_from_lookups <- function(
         return(NA_real_)
     }
 
-    # Count where any source matches between the two assignments
+    # Count where any source matches between the two assignments. Under
+    # converts_without_assigned_source, NA records "no source could be assigned" - a value,
+    # not missing data - so both assignments failing to name a source counts as agreement.
+    # That case is spelled out rather than left to intersect(NA, NA) returning length 1.
     matches <- vapply(
         common_converts,
         function(conv) {
-            length(intersect(map1[[conv]], map2[[conv]])) > 0
+            s1 <- map1[[conv]]
+            s2 <- map2[[conv]]
+            if (anyNA(s1) && anyNA(s2)) {
+                return(TRUE)
+            }
+            length(intersect(s1[!is.na(s1)], s2[!is.na(s2)])) > 0
         },
         logical(1)
     )

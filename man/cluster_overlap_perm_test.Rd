@@ -16,7 +16,8 @@ cluster_overlap_perm_test(
   floor_trace,
   room_trace,
   nperm = 1000,
-  num_cores = detectCores() - 1
+  num_cores = detectCores() - 1,
+  include_singleton_acq = FALSE
 )
 }
 \arguments{
@@ -43,28 +44,27 @@ cluster_overlap_perm_test(
 \item{nperm}{Number of permutations to perform.}
 
 \item{num_cores}{Number of cores for parallel processing.}
+
+\item{include_singleton_acq}{Whether to evaluate all acquisitions, including those not
+classified to be a part of multi-patient clusters.}
 }
 \value{
 A list containing:
 \itemize{
-\item \code{observed}: A named list with facility, floor, room, seq_facility, seq_floor,
-seq_room per-cluster fractions for observed data
-\item \code{observed_n_overlap}: A named list (same trace types) of per-cluster converts-with-overlap
-counts (numerators) behind the observed fractions
-\item \code{observed_n_converts}: A named list (same trace types) of per-cluster convert counts
-(denominators) behind the observed fractions
-\item \code{permuted}: A numeric array of dimensions (n_clusters, 6 trace_types, nperm) of
-per-cluster fractions
-\item \code{permuted_n_overlap}: A numeric array (same dimensions) of per-cluster converts-with-overlap
-counts (numerators)
-\item \code{permuted_n_converts}: A numeric array (same dimensions) of per-cluster convert counts
-(denominators)
-\item \code{valid_clusters}: A numeric vector of cluster IDs that have more than one patient
+\item \code{observed}: A matrix with one row per trace type (facility, floor, room,
+seq_facility, seq_floor, seq_room) and columns \code{n_overlap} (converts with overlap) and
+\code{n_converts} (converts), each summed over the tested clusters
+\item \code{permuted}: A numeric array of dimensions (trace type, count, nperm) holding the same
+two sums for every permutation
+\item \code{valid_clusters}: A numeric vector of the cluster IDs tested — those with more than one
+patient, plus the single-patient acquisition clusters when \code{include_singleton_acq} is TRUE
 }
 
-The numerator/denominator components let callers compute a pooled,
-convert-weighted fraction (\code{sum(n_overlap) / sum(n_converts)}) across clusters
-and sequence types, rather than averaging the per-cluster fractions.
+The pooled, convert-weighted overlap fraction is \code{n_overlap / n_converts}; summing the counts
+across sequence types before dividing pools them further.
+
+A permutation whose cluster assignment strands (capacity too concentrated to place
+every patient) stops the whole test with an error.
 }
 \description{
 Performs a permutation test to assess whether the observed fraction of converts

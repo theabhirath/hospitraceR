@@ -11,7 +11,8 @@ get_tn_clusters_sv_index(
   adm_pos_pt_seqs,
   seq2pt,
   dates,
-  tree
+  tree,
+  snp_thresh = Inf
 )
 }
 \arguments{
@@ -31,6 +32,11 @@ collected at intake or later; a superset of \code{adm_seqs}.}
 
 \item{tree}{A phylogenetic tree of class \code{phylo} over the same isolates, e.g. from
 \code{\link[=get_phylo_tree]{get_phylo_tree()}}. Its first tip is taken as the outgroup, matching \code{dna_aln}.}
+
+\item{snp_thresh}{SNP distance above which a threshold-free cluster is broken up. Within each
+cluster, isolates connected through a chain of pairwise distances at or below this
+value (single-linkage components) are kept together; disconnected groups are split
+into separate clusters, all retained. \code{Inf} (the default) never breaks a cluster.}
 }
 \value{
 A numeric vector giving the cluster each isolate belongs to.

@@ -4,13 +4,20 @@
 \alias{cluster_isolate_overlap}
 \title{Summarize isolate overlap within each cluster}
 \usage{
-cluster_isolate_overlap(isolate_lookup, iso_overlap_df)
+cluster_isolate_overlap(
+  isolate_lookup,
+  iso_overlap_df,
+  include_singleton_acq = FALSE
+)
 }
 \arguments{
 \item{isolate_lookup}{A lookup table for isolates and their cluster assignments with other
 relevant epidemiological information. See \code{\link[=get_isolate_lookup]{get_isolate_lookup()}}.}
 
 \item{iso_overlap_df}{A data frame of isolate-pair overlaps, from \code{\link[=isolate_isolate_overlap]{isolate_isolate_overlap()}}.}
+
+\item{include_singleton_acq}{Whether to evaluate all acquisitions, including those not
+classified to be a part of multi-patient clusters.}
 }
 \value{
 A data frame with columns \code{cluster}, \code{isolate_id} and \code{overlap}.
@@ -20,4 +27,7 @@ For each isolate in a cluster (treated as a recipient), reports whether any othe
 same cluster (as a donor) overlaps with it, using the isolate-pair overlaps from
 \code{\link[=isolate_isolate_overlap]{isolate_isolate_overlap()}} or \code{\link[=isolate_isolate_sequential_overlap]{isolate_isolate_sequential_overlap()}}. Admission-positive
 isolates are reported as \code{NA}, since they were not acquired in the facility.
+
+Only multi-patient clusters are reported by default; set \code{include_singleton_acq} to also account
+for acquisitions sitting in single-patient clusters.
 }

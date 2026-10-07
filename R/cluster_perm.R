@@ -17,27 +17,25 @@
 #' @param room_trace A matrix with room-level trace data (same structure as `facility_trace`).
 #' @param nperm Number of permutations to perform.
 #' @param num_cores Number of cores for parallel processing.
+#' @param include_singleton_acq Whether to evaluate all acquisitions, including those not
+#'                              classified to be a part of multi-patient clusters.
 #'
 #' @returns A list containing:
 #'     \itemize{
-#'     \item `observed`: A named list with facility, floor, room, seq_facility, seq_floor,
-#'       seq_room per-cluster fractions for observed data
-#'     \item `observed_n_overlap`: A named list (same trace types) of per-cluster converts-with-overlap
-#'       counts (numerators) behind the observed fractions
-#'     \item `observed_n_converts`: A named list (same trace types) of per-cluster convert counts
-#'       (denominators) behind the observed fractions
-#'     \item `permuted`: A numeric array of dimensions (n_clusters, 6 trace_types, nperm) of
-#'       per-cluster fractions
-#'     \item `permuted_n_overlap`: A numeric array (same dimensions) of per-cluster converts-with-overlap
-#'       counts (numerators)
-#'     \item `permuted_n_converts`: A numeric array (same dimensions) of per-cluster convert counts
-#'       (denominators)
-#'     \item `valid_clusters`: A numeric vector of cluster IDs that have more than one patient
+#'     \item `observed`: A matrix with one row per trace type (facility, floor, room,
+#'       seq_facility, seq_floor, seq_room) and columns `n_overlap` (converts with overlap) and
+#'       `n_converts` (converts), each summed over the tested clusters
+#'     \item `permuted`: A numeric array of dimensions (trace type, count, nperm) holding the same
+#'       two sums for every permutation
+#'     \item `valid_clusters`: A numeric vector of the cluster IDs tested — those with more than one
+#'       patient, plus the single-patient acquisition clusters when `include_singleton_acq` is TRUE
 #'     }
 #'
-#'   The numerator/denominator components let callers compute a pooled,
-#'   convert-weighted fraction (`sum(n_overlap) / sum(n_converts)`) across clusters
-#'   and sequence types, rather than averaging the per-cluster fractions.
+#'   The pooled, convert-weighted overlap fraction is `n_overlap / n_converts`; summing the counts
+#'   across sequence types before dividing pools them further.
+#'
+#'   A permutation whose cluster assignment strands (capacity too concentrated to place
+#'   every patient) stops the whole test with an error.
 #'
 #' @importFrom parallel detectCores
 #' @importFrom pbmcapply pbmclapply
@@ -54,10 +52,9 @@ cluster_overlap_perm_test <- function(
     floor_trace,
     room_trace,
     nperm = 1000,
-    num_cores = detectCores() - 1
+    num_cores = detectCores() - 1,
+    include_singleton_acq = FALSE
 ) {
-    cluster_names <- names(clusters)
-
     # Create observed isolate_lookup
     observed_lookup <- get_isolate_lookup(
         clusters = clusters,
@@ -68,141 +65,56 @@ cluster_overlap_perm_test <- function(
         surv_df = surv_df
     )
 
-    # Get non-single-patient clusters to analyze
-    valid_clusters <- get_non_single_patient_clusters(observed_lookup)
+    # Clusters to analyze: multi-patient, plus singleton acquisitions when asked for
+    valid_clusters <- overlap_clusters(observed_lookup, include_singleton_acq)
 
     if (length(valid_clusters) == 0) {
-        stop("No clusters with more than one patient found.")
+        # Classed so callers can skip an ST with nothing to test without also
+        # swallowing real failures.
+        stop(errorCondition(
+            "No clusters with more than one patient found.",
+            class = "no_valid_clusters"
+        ))
     }
 
-    # =========================================================================
-    # OPTIMIZATION: Precompute isolate-isolate overlaps once
-    # The overlap between isolates depends only on patient locations over time,
-    # not on cluster assignments. So we compute this expensive O(n^2) operation
-    # once and reuse it for all permutations.
-    # =========================================================================
-    iso_overlap_facility <- isolate_isolate_overlap(observed_lookup, facility_trace)
-    iso_overlap_floor <- isolate_isolate_overlap(observed_lookup, floor_trace)
-    iso_overlap_room <- isolate_isolate_overlap(observed_lookup, room_trace)
+    # Isolate-isolate overlaps depend only on patient locations over time, not on cluster
+    # assignments, so this O(n^2) step runs once and is reused for every permutation. The list
+    # names are the trace types of the result.
+    traces <- list(facility = facility_trace, floor = floor_trace, room = room_trace)
+    iso_overlaps <- c(
+        lapply(traces, isolate_isolate_overlap, isolate_lookup = observed_lookup),
+        setNames(
+            lapply(traces, isolate_isolate_sequential_overlap, isolate_lookup = observed_lookup),
+            paste0("seq_", names(traces))
+        )
+    )
 
-    # Precompute sequential isolate-isolate overlaps once
-    seq_overlap_facility <- isolate_isolate_sequential_overlap(observed_lookup, facility_trace)
-    seq_overlap_floor <- isolate_isolate_sequential_overlap(observed_lookup, floor_trace)
-    seq_overlap_room <- isolate_isolate_sequential_overlap(observed_lookup, room_trace)
-
-    # Precompute a base lookup without cluster dependency (for fast updates)
-    base_lookup <- observed_lookup[,
-        c("isolate_id", "patient_id", "date", "adm_pos", "prev_surv", "prev_surv_neg")
-    ]
-
-    # Calculate observed overlap fractions using precomputed overlaps
-    observed_fractions <- calculate_overlap_fractions(
+    observed <- pooled_overlap_counts(
         observed_lookup,
         valid_clusters,
-        iso_overlap_facility,
-        iso_overlap_floor,
-        iso_overlap_room,
-        seq_overlap_facility,
-        seq_overlap_floor,
-        seq_overlap_room
+        iso_overlaps,
+        include_singleton_acq
     )
 
-    # Per-cluster numerator/denominator counts behind each observed fraction.
-    # Aggregation pools these (sum of overlaps / sum of converts) rather than
-    # averaging the per-cluster fractions.
-    observed_n_overlap <- lapply(observed_fractions, attr, "n_overlap")
-    observed_n_converts <- lapply(observed_fractions, attr, "n_converts")
-
-    # Create eligibility matrices for permutation
-    elig_mats <- create_eligibility_matrices(clusters, seq2pt, adm_seqs, adm_pos_pt_seqs)
-
-    # Calculate cluster counts for each patient category
-    cluster_per_index_start <- cluster_per_patient(elig_mats$index_start)
-    cluster_per_index_not_start <- cluster_per_patient(elig_mats$index_not_start)
-    cluster_per_convert <- cluster_per_patient(elig_mats$convert)
-
-    # Calculate patient counts per cluster for each category
-    index_start_per_cluster <- pt_per_cluster(elig_mats$index_start, clusters)
-    index_not_start_per_cluster <- pt_per_cluster(elig_mats$index_not_start, clusters)
-    convert_per_cluster <- pt_per_cluster(elig_mats$convert, clusters)
-
-    # Run permutations in parallel with progress bar
-    perm_results <- pbmclapply(
-        seq_len(nperm),
-        function(n) {
-            # Create permuted cluster assignment
-            perm_clust <- assign_permuted_clusters(
-                cluster_names,
-                elig_mats,
-                list(
-                    index_start = cluster_per_index_start,
-                    index_not_start = cluster_per_index_not_start,
-                    convert = cluster_per_convert
-                ),
-                list(
-                    index_start = index_start_per_cluster,
-                    index_not_start = index_not_start_per_cluster,
-                    convert = convert_per_cluster
-                )
-            )
-
-            # Fast lookup update: just update the cluster column
-            perm_lookup <- base_lookup
+    draws <- draw_permuted_clusters(clusters, seq2pt, adm_seqs, adm_pos_pt_seqs, nperm, num_cores)
+    perm_results <- pbmclapply_or_stop(
+        draws,
+        function(perm_clust) {
+            perm_lookup <- observed_lookup
             perm_lookup$cluster <- perm_clust[perm_lookup$isolate_id]
-
-            # Get valid clusters for this permutation
-            perm_valid_clusters <- get_non_single_patient_clusters(perm_lookup)
-
-            # Calculate overlap fractions using precomputed overlaps
-            calculate_overlap_fractions(
+            pooled_overlap_counts(
                 perm_lookup,
-                perm_valid_clusters,
-                iso_overlap_facility,
-                iso_overlap_floor,
-                iso_overlap_room,
-                seq_overlap_facility,
-                seq_overlap_floor,
-                seq_overlap_room
+                overlap_clusters(perm_lookup, include_singleton_acq),
+                iso_overlaps,
+                include_singleton_acq
             )
         },
-        mc.cores = num_cores
+        num_cores
     )
-
-    # Organize results into array
-    trace_types <- c("facility", "floor", "room", "seq_facility", "seq_floor", "seq_room")
-    n_clusters <- length(valid_clusters)
-
-    arr_dim <- c(n_clusters, length(trace_types), nperm)
-    arr_dimnames <- list(
-        as.character(valid_clusters),
-        trace_types,
-        seq_len(nperm)
-    )
-    perm_array <- array(dim = arr_dim, dimnames = arr_dimnames)
-    # Numerator (converts with overlap) and denominator (converts) behind each
-    # permuted per-cluster fraction, kept so aggregation can pool them.
-    perm_n_overlap_array <- array(dim = arr_dim, dimnames = arr_dimnames)
-    perm_n_converts_array <- array(dim = arr_dim, dimnames = arr_dimnames)
-
-    vc_chr <- as.character(valid_clusters)
-    for (i in seq_len(nperm)) {
-        for (j in seq_along(trace_types)) {
-            trace <- trace_types[j]
-            perm_frac <- perm_results[[i]][[trace]]
-            # Match clusters - permuted may have different valid clusters
-            perm_array[, j, i] <- perm_frac[vc_chr]
-            perm_n_overlap_array[, j, i] <- attr(perm_frac, "n_overlap")[vc_chr]
-            perm_n_converts_array[, j, i] <- attr(perm_frac, "n_converts")[vc_chr]
-        }
-    }
 
     list(
-        observed = observed_fractions,
-        observed_n_overlap = observed_n_overlap,
-        observed_n_converts = observed_n_converts,
-        permuted = perm_array,
-        permuted_n_overlap = perm_n_overlap_array,
-        permuted_n_converts = perm_n_converts_array,
+        observed = observed,
+        permuted = simplify2array(perm_results),
         valid_clusters = valid_clusters
     )
 }
@@ -211,162 +123,122 @@ cluster_overlap_perm_test <- function(
 # Helper functions for permutation tests
 # =============================================================================
 
-#' Calculate overlap fractions using precomputed isolate-isolate overlaps
+#' Converts with overlap and converts, summed over the given clusters, for each precomputed
+#' isolate-isolate overlap table
+#' @param iso_overlaps Named list of isolate-pair overlap tables, one per trace type.
+#' @return A matrix with one row per trace type and columns `n_overlap`, `n_converts`.
 #' @noRd
-calculate_overlap_fractions <- function(
+pooled_overlap_counts <- function(
     isolate_lookup,
     valid_clusters,
-    iso_overlap_facility,
-    iso_overlap_floor,
-    iso_overlap_room,
-    seq_overlap_facility,
-    seq_overlap_floor,
-    seq_overlap_room
+    iso_overlaps,
+    include_singleton_acq = FALSE
 ) {
-    # Filter lookup to valid clusters for overlap calculation
     lookup_filtered <- isolate_lookup[isolate_lookup$cluster %in% valid_clusters, ]
-
-    # Use precomputed isolate-isolate overlaps to calculate cluster-isolate overlap
-    cluster_overlap_facility <- cluster_isolate_overlap(lookup_filtered, iso_overlap_facility)
-    cluster_overlap_floor <- cluster_isolate_overlap(lookup_filtered, iso_overlap_floor)
-    cluster_overlap_room <- cluster_isolate_overlap(lookup_filtered, iso_overlap_room)
-
-    seq_cl_facility <- cluster_isolate_overlap(lookup_filtered, seq_overlap_facility)
-    seq_cl_floor <- cluster_isolate_overlap(lookup_filtered, seq_overlap_floor)
-    seq_cl_room <- cluster_isolate_overlap(lookup_filtered, seq_overlap_room)
-
-    # Calculate fraction of converts with overlap
-    list(
-        facility = fraction_convert_events_with_overlap(cluster_overlap_facility, lookup_filtered),
-        floor = fraction_convert_events_with_overlap(cluster_overlap_floor, lookup_filtered),
-        room = fraction_convert_events_with_overlap(cluster_overlap_room, lookup_filtered),
-        seq_facility = fraction_convert_events_with_overlap(seq_cl_facility, lookup_filtered),
-        seq_floor = fraction_convert_events_with_overlap(seq_cl_floor, lookup_filtered),
-        seq_room = fraction_convert_events_with_overlap(seq_cl_room, lookup_filtered)
-    )
+    t(vapply(
+        iso_overlaps,
+        function(iso_overlap_df) {
+            fr <- fraction_convert_events_with_overlap(
+                cluster_isolate_overlap(lookup_filtered, iso_overlap_df, include_singleton_acq),
+                lookup_filtered
+            )
+            c(n_overlap = sum(attr(fr, "n_overlap")), n_converts = sum(attr(fr, "n_converts")))
+        },
+        numeric(2)
+    ))
 }
 
 #' Create eligibility matrices for permutation
+#'
+#' Splits the sequences into the three strata the permutation shuffles separately: index
+#' patients' sequences in the cluster they started, their sequences in other clusters, and
+#' converts. One row per sequence; `comb` keys a patient's sequences within one cluster, which
+#' always move together.
 #' @noRd
 create_eligibility_matrices <- function(clusters, seq2pt, adm_seqs, adm_pos_pt_seqs) {
-    cluster_names <- names(clusters)
+    seqs <- names(clusters)
+    # Sequence ids are names: integer ids would subscript clusters/seq2pt by position.
+    adm_seqs <- intersect(as.character(adm_seqs), seqs)
+    comb <- setNames(paste(seq2pt[seqs], clusters, sep = "-"), seqs)
 
-    # Identify index patients who started clusters vs those who didn't
-    index_pt_start_seqs <- unlist(sapply(adm_seqs, function(seq_id) {
-        cluster_names[clusters == clusters[seq_id] & seq2pt[cluster_names] == seq2pt[seq_id]]
-    }))
-    index_seqs_start <- intersect(index_pt_start_seqs, cluster_names)
-    index_seqs_not_start <- intersect(setdiff(adm_pos_pt_seqs, index_seqs_start), cluster_names)
-    convert_seqs <- setdiff(cluster_names, c(index_seqs_start, index_seqs_not_start))
+    start <- seqs[comb %in% comb[adm_seqs]]
+    not_start <- intersect(setdiff(as.character(adm_pos_pt_seqs), start), seqs)
+    convert <- setdiff(seqs, c(start, not_start))
 
-    # Create eligibility matrix
-    get_elig_mat <- function(seqs) {
-        cbind(
-            seq = as.character(seqs),
-            patient = seq2pt[seqs],
-            cluster = clusters[seqs],
-            comb = paste(seq2pt[seqs], clusters[seqs], sep = "-")
-        )
-    }
-
-    list(
-        index_start = get_elig_mat(index_seqs_start),
-        index_not_start = get_elig_mat(index_seqs_not_start),
-        convert = get_elig_mat(convert_seqs)
+    lapply(
+        list(index_start = start, index_not_start = not_start, convert = convert),
+        function(s) cbind(seq = s, patient = seq2pt[s], cluster = clusters[s], comb = comb[s])
     )
 }
 
-#' Count clusters per patient from eligibility matrix
-#' @importFrom stats setNames
+#' Assign one stratum's patients to random clusters, preserving how many clusters each patient
+#' spans and how many of the stratum's patients each cluster holds
 #' @noRd
-cluster_per_patient <- function(elig_mat) {
-    if (nrow(elig_mat) == 0) {
-        return(setNames(integer(0), character(0)))
-    }
+assign_pt_clusters <- function(elig_mat, cluster_ids, rand_clusters) {
+    pairs <- unique(elig_mat[, c("patient", "cluster", "comb"), drop = FALSE])
+    capacity <- c(table(factor(pairs[, "cluster"], levels = cluster_ids)))
 
-    pt_unique_sorted <- sort(unique(elig_mat[, "patient"]))
-    setNames(
-        vapply(
-            pt_unique_sorted,
-            function(pt) {
-                length(unique(elig_mat[elig_mat[, "patient"] == pt, "cluster"]))
-            },
-            integer(1)
-        ),
-        pt_unique_sorted
-    )
-}
+    # Patients spanning the most clusters go first, while capacity is still spread out
+    for (pt in names(sort(c(table(pairs[, "patient"])), decreasing = TRUE))) {
+        pt_combs <- pairs[pairs[, "patient"] == pt, "comb"]
+        avail <- names(capacity)[capacity > 0]
+        # Earlier draws used up the clusters this patient needs: stranded.
+        if (length(avail) < length(pt_combs)) {
+            stop("cluster assignment stranded (capacity too concentrated to place every patient)")
+        }
+        cluster_assign <- sample(avail, length(pt_combs))
+        capacity[cluster_assign] <- capacity[cluster_assign] - 1
 
-#' Count patients per cluster from eligibility matrix
-#' @noRd
-pt_per_cluster <- function(elig_mat, clusters) {
-    clusters_unique_sorted <- sort(unique(clusters))
-    setNames(
-        vapply(
-            clusters_unique_sorted,
-            function(clust) {
-                if (nrow(elig_mat) == 0) {
-                    return(0L)
-                }
-                length(unique(elig_mat[elig_mat[, "cluster"] == clust, "patient"]))
-            },
-            integer(1)
-        ),
-        clusters_unique_sorted
-    )
-}
-
-#' Assign patients to clusters randomly while preserving structure
-#' @noRd
-assign_pt_clusters <- function(elig_vec, cluster_per_pt, pt_per_cluster, rand_clusters) {
-    if (length(cluster_per_pt) == 0) {
-        return(rand_clusters)
-    }
-
-    names_pt_per_cluster <- names(pt_per_cluster)
-
-    for (pt in names(sort(cluster_per_pt, decreasing = TRUE))) {
-        pt_clust_ids <- unique(elig_vec[elig_vec[, "patient"] == pt, "comb"])
-        cluster_assign <- sample(names_pt_per_cluster[pt_per_cluster > 0], length(pt_clust_ids))
-        pt_per_cluster[cluster_assign] <- pt_per_cluster[cluster_assign] - 1
-
-        for (pt_c_i in seq_along(pt_clust_ids)) {
-            seqs_to_assign <- elig_vec[elig_vec[, "comb"] == pt_clust_ids[pt_c_i], "seq"]
-            rand_clusters[seqs_to_assign] <- as.numeric(cluster_assign[pt_c_i])
+        for (i in seq_along(pt_combs)) {
+            seqs_to_assign <- elig_mat[elig_mat[, "comb"] == pt_combs[i], "seq"]
+            rand_clusters[seqs_to_assign] <- as.numeric(cluster_assign[i])
         }
     }
     rand_clusters
 }
 
-#' Assign permuted clusters
-#' @importFrom stats setNames
+#' Draw `nperm` permuted cluster assignments
+#'
+#' The null shared by [cluster_overlap_perm_test()] and the analysis-side hotspot tests: patients
+#' are reshuffled among clusters within the strata of `create_eligibility_matrices()`, preserving
+#' the number of patients per cluster and of clusters per patient, while a patient's sequences in
+#' one cluster stay together. A draw that strands (capacity too concentrated to place every
+#' patient) is an error.
+#' @return A list of `nperm` named cluster vectors.
 #' @noRd
-assign_permuted_clusters <- function(cluster_names, elig_mats, cluster_per_pt, pt_per_clust) {
-    perm_clust <- setNames(rep(-1, length(cluster_names)), cluster_names)
-
-    # Assign converts first
-    perm_clust <- assign_pt_clusters(
-        elig_mats$convert,
-        cluster_per_pt$convert,
-        pt_per_clust$convert,
-        perm_clust
+draw_permuted_clusters <- function(clusters, seq2pt, adm_seqs, adm_pos_pt_seqs, nperm, num_cores) {
+    elig_mats <- create_eligibility_matrices(clusters, seq2pt, adm_seqs, adm_pos_pt_seqs)
+    pbmclapply_or_stop(
+        seq_len(nperm),
+        function(i) assign_permuted_clusters(clusters, elig_mats),
+        num_cores
     )
+}
 
-    # Then index patients who started clusters
-    perm_clust <- assign_pt_clusters(
-        elig_mats$index_start,
-        cluster_per_pt$index_start,
-        pt_per_clust$index_start,
-        perm_clust
-    )
+#' pbmclapply that raises a failed worker's error
+#'
+#' With mc.cores > 1, pbmclapply returns a failed worker as a try-error element instead of
+#' raising; re-raise the first so callers never index into one.
+#' @noRd
+pbmclapply_or_stop <- function(X, FUN, num_cores) {
+    res <- pbmclapply(X, FUN, mc.cores = num_cores)
+    failed <- vapply(res, inherits, logical(1), "try-error")
+    if (any(failed)) {
+        stop(conditionMessage(attr(res[[which(failed)[1]]], "condition")))
+    }
+    res
+}
 
-    # Then index patients who didn't start clusters
-    perm_clust <- assign_pt_clusters(
-        elig_mats$index_not_start,
-        cluster_per_pt$index_not_start,
-        pt_per_clust$index_not_start,
-        perm_clust
-    )
+#' Assign permuted clusters
+#' @noRd
+assign_permuted_clusters <- function(clusters, elig_mats) {
+    perm_clust <- setNames(rep(-1, length(clusters)), names(clusters))
+    cluster_ids <- sort(unique(clusters))
+
+    # Converts first, then index patients who started clusters, then those who didn't
+    for (stage in c("convert", "index_start", "index_not_start")) {
+        perm_clust <- assign_pt_clusters(elig_mats[[stage]], cluster_ids, perm_clust)
+    }
 
     perm_clust
 }

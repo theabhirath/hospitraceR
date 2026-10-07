@@ -30,10 +30,12 @@ all other converts in the cluster.
 for the patient after admission and there is overlap explanation for all other isolates in the cluster.
 \item "missing-intermediate": if the index isolate is admission-positive but at least one other convert
 in the cluster has no overlap explanation.
-\item "false-negative-index": if the index isolate is not admission-positive but there is overlap explanation for
-all other converts in the cluster barring one (deemed to be the false negative index).
-\item "missing-source": if the index isolate is not admission-positive and there is no overlap explanation for
-more than one convert in the cluster.
+\item "weak-index-missing-intermediate": if the index isolate is a weak index (not admission-positive
+but the first surveillance for the patient after admission) and at least one other convert in the
+cluster has no overlap explanation.
+\item "missing-source": if the index isolate is in the cluster but is neither admission-positive nor a weak
+index (the index isolate is not the patient's first surveillance culture), so the cluster's source was
+not sampled. The other isolates' overlap explanations are not consulted.
 \item "multiply-colonized-index": if the index isolate is not in the cluster but is admission-positive, this is
 a "multiply-colonized index" if there is overlap explanation for all other isolates in the cluster.
 \item "multiply-colonized-index-missing-intermediate": if the index isolate is not in the cluster but is

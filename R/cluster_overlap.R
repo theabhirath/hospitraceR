@@ -53,7 +53,8 @@ isolate_isolate_overlap <- function(isolate_lookup, trace_mat) {
                 next
             }
             # get the time range between the donor and recipient
-            cols <- as.integer(last_surv):as.integer(recipient_date)
+            # days start at 0, trace columns at 1 (named "0", "1", ...)
+            cols <- as.integer(last_surv):as.integer(recipient_date) + 1L
             # get the trace matrix subset for the donor and recipient
             pt_sub <- trace_mat[c(row_i, row_j), cols, drop = FALSE]
             # count the number of days where the donor and recipient are both present
@@ -137,7 +138,8 @@ isolate_isolate_sequential_overlap <- function(isolate_lookup, trace_mat) {
                 next
             }
             # get the time range between the donor and recipient
-            cols <- as.integer(last_surv):as.integer(recipient_date)
+            # days start at 0, trace columns at 1 (named "0", "1", ...)
+            cols <- as.integer(last_surv):as.integer(recipient_date) + 1L
             # get the trace matrix subset for the donor and recipient
             pt_sub <- trace_mat[c(row_i, row_j), cols, drop = FALSE]
             # if there is ANY spatiotemporal (concurrent) overlap, this pair is
@@ -195,15 +197,20 @@ isolate_isolate_sequential_overlap <- function(isolate_lookup, trace_mat) {
 #' [isolate_isolate_overlap()] or [isolate_isolate_sequential_overlap()]. Admission-positive
 #' isolates are reported as `NA`, since they were not acquired in the facility.
 #'
+#' Only multi-patient clusters are reported by default; set `include_singleton_acq` to also account
+#' for acquisitions sitting in single-patient clusters.
+#'
 #' @param isolate_lookup A lookup table for isolates and their cluster assignments with other
 #'                       relevant epidemiological information. See [get_isolate_lookup()].
 #' @param iso_overlap_df A data frame of isolate-pair overlaps, from [isolate_isolate_overlap()].
+#' @param include_singleton_acq Whether to evaluate all acquisitions, including those not
+#'                              classified to be a part of multi-patient clusters.
 #'
 #' @return A data frame with columns `cluster`, `isolate_id` and `overlap`.
 #'
 #' @export
-cluster_isolate_overlap <- function(isolate_lookup, iso_overlap_df) {
-    # get non-single patient clusters
+cluster_isolate_overlap <- function(isolate_lookup, iso_overlap_df, include_singleton_acq = FALSE) {
+    # get non-single patient clusters (the singleton acquisitions are appended below)
     clusters <- get_non_single_patient_clusters(isolate_lookup)
 
     # list of data frames for each cluster
@@ -219,8 +226,7 @@ cluster_isolate_overlap <- function(isolate_lookup, iso_overlap_df) {
             drop = FALSE
         ]
 
-        ## TODO: check if there is a way to refine this overlap to be more accurate
-        # currently all this cares about is if there is any overlap, not the actual overlap days
+        # check if there is any overlap for each recipient isolate in the cluster
         od_overlap_days <- od$overlap_days
         any_overlap_by_rec <- if (nrow(od) > 0 && max(od_overlap_days) > 0) {
             # this could be min if we want to look at bare minimum overlap
@@ -241,6 +247,24 @@ cluster_isolate_overlap <- function(isolate_lookup, iso_overlap_df) {
             row.names = NULL
         )
     })
+
+    if (include_singleton_acq) {
+        # Every within-cluster pair of a single-patient cluster is a same-patient pair, and
+        # isolate_isolate_overlap() never reports those, so the loop above would find no overlap for
+        # these isolates however long it scanned. Emit FALSE directly instead
+        idx_singleton <- isolate_lookup$cluster %in% get_singleton_acq_clusters(isolate_lookup)
+        out_list <- c(
+            out_list,
+            list(data.frame(
+                cluster = isolate_lookup$cluster[idx_singleton],
+                isolate_id = isolate_lookup$isolate_id[idx_singleton],
+                # rep() rather than a bare FALSE so the no-singletons case stays a 0-row frame
+                # instead of tripping data.frame()'s recycling check
+                overlap = rep(FALSE, sum(idx_singleton)),
+                row.names = NULL
+            ))
+        )
+    }
 
     # combine the data frames for each cluster into a single data frame
     do.call(rbind, out_list)

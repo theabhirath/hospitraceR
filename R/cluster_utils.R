@@ -108,6 +108,54 @@ get_non_single_patient_clusters <- function(isolate_lookup) {
     unique_clusters[cluster_size > 1]
 }
 
+#' Get single-patient clusters that represent an acquisition
+#'
+#' @description
+#' The complement of [get_non_single_patient_clusters()], restricted to acquisitions: clusters made
+#' up of isolates from exactly one patient, where that patient has no admission-positive isolate.
+#' Singleton clusters of admission-positive patients are excluded, since they were not acquired in
+#' the facility and so nothing about them needs an overlap explanation.
+#'
+#' @param isolate_lookup A lookup table for isolates and their cluster assignments with other
+#'                       relevant epidemiological information. See [get_isolate_lookup()].
+#'
+#' @returns A numeric vector of cluster IDs containing isolates from exactly one, non
+#'   admission-positive, patient.
+#'
+#' @export
+get_singleton_acq_clusters <- function(isolate_lookup) {
+    adm_pos_patients <- unique(isolate_lookup$patient_id[isolate_lookup$adm_pos])
+    # split() in one pass rather than a scan per cluster: with unclustered isolates each carrying
+    # their own id (see remap_cluster_values()), there are as many clusters as isolates here, and
+    # this runs inside every permutation.
+    pts_by_cluster <- split(isolate_lookup$patient_id, isolate_lookup$cluster)
+    is_singleton_acq <- vapply(
+        pts_by_cluster,
+        function(pts) {
+            pt <- unique(pts)
+            length(pt) == 1L && !(pt %in% adm_pos_patients)
+        },
+        logical(1)
+    )
+    # split() keys its output by the cluster label as a character, so recover the numeric ids
+    sort(as.numeric(names(pts_by_cluster)[is_singleton_acq]))
+}
+
+#' Clusters eligible for overlap analysis
+#'
+#' Multi-patient clusters, plus (when `include_singleton_acq` is TRUE) the single-patient
+#' acquisition clusters. Shared by [cluster_isolate_overlap()] and
+#' [cluster_overlap_perm_test()] so both select the same cluster set.
+#'
+#' @noRd
+overlap_clusters <- function(isolate_lookup, include_singleton_acq = FALSE) {
+    clusters <- get_non_single_patient_clusters(isolate_lookup)
+    if (include_singleton_acq) {
+        clusters <- sort(union(clusters, get_singleton_acq_clusters(isolate_lookup)))
+    }
+    clusters
+}
+
 #' Remove singleton clusters from a vector of cluster assignments
 #'
 #' @description
