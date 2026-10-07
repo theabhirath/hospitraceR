@@ -16,12 +16,8 @@ relevant epidemiological information. See \code{\link[=get_isolate_lookup]{get_i
 
 \item{iso_overlap_df}{A data frame of isolate-pair overlaps, from \code{\link[=isolate_isolate_overlap]{isolate_isolate_overlap()}}.}
 
-\item{include_singleton_acq}{Whether to also report single-patient acquisition clusters, as
-identified by \code{\link[=get_singleton_acq_clusters]{get_singleton_acq_clusters()}}. FALSE (the default) restricts the report to
-multi-patient clusters. A singleton cluster has no other patient to overlap with, so its
-isolates always come back with \code{overlap = FALSE}; including them therefore counts every
-singleton acquisition as an acquisition without an overlap explanation, rather than leaving it
-out of the accounting. Singleton clusters of admission-positive patients are never included.}
+\item{include_singleton_acq}{Whether to evaluate all acquisitions, including those not
+classified to be a part of multi-patient clusters.}
 }
 \value{
 A data frame with columns \code{cluster}, \code{isolate_id} and \code{overlap}.
