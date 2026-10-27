@@ -4,7 +4,12 @@
 \alias{isolate_isolate_overlap}
 \title{Calculate isolate-isolate co-location overlap}
 \usage{
-isolate_isolate_overlap(isolate_lookup, trace_mat)
+isolate_isolate_overlap(
+  isolate_lookup,
+  trace_mat,
+  min_overlap_days = 2L,
+  grace_days = 3L
+)
 }
 \arguments{
 \item{isolate_lookup}{A lookup table for isolates and their cluster assignments with other
@@ -12,13 +17,32 @@ relevant epidemiological information. See \code{\link[=get_isolate_lookup]{get_i
 
 \item{trace_mat}{A patient-by-date matrix of location occupancy (patients in rows, dates in
 columns); a positive value marks a patient's location on a given day.}
+
+\item{min_overlap_days}{Minimum number of co-located days in the window for a pair to count as
+overlapping.}
+
+\item{grace_days}{Days before the recipient's last negative screen that still count, allowing
+for a recent colonization the screen did not yet detect.}
 }
 \value{
 A data frame with columns \code{iso_donor}, \code{iso_recipient} and \code{overlap_days}.
 }
 \description{
 For every ordered pair of isolates, counts the days on which the two patients were in the same
-place in \code{trace_mat}, within the window from the donor's previous surveillance date up to the
-recipient's collection date. This is the concurrent (spatiotemporal) overlap; for indirect
-overlap via a shared location at different times, see \code{\link[=isolate_isolate_sequential_overlap]{isolate_isolate_sequential_overlap()}}.
+place in \code{trace_mat}. This is the concurrent (spatiotemporal) overlap; for indirect overlap via a
+shared location at different times, see \code{\link[=isolate_isolate_sequential_overlap]{isolate_isolate_sequential_overlap()}}.
+
+The window runs from the later of the donor's previous surveillance date and the recipient's
+last known negative screen, up to the recipient's collection date. A recipient whose prior
+surveillance was all negative (\code{prev_surv_neg}) is known to have been negative on \code{prev_surv},
+so contact before that screen cannot explain the later positive and is not counted; recipients
+with no known negative screen are not constrained. Both ends are inclusive (contact on the day
+of the negative screen may follow the swab).
+
+A screen can miss a colonization acquired shortly before it, so the recipient's window opens
+\code{grace_days} before its last negative screen rather than on it.
+
+A pair co-located on fewer than \code{min_overlap_days} days is reported with \code{overlap_days = 0}, so
+that a same-day bed turnover (one patient leaving and another arriving on the same day, which
+the daily trace records as both being there) is not taken as contact.
 }
