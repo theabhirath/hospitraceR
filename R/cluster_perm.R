@@ -24,14 +24,17 @@
 #'     \itemize{
 #'     \item `observed`: A matrix with one row per trace type (facility, floor, room,
 #'       seq_facility, seq_floor, seq_room) and columns `n_overlap` (converts with overlap) and
-#'       `n_converts` (converts), each summed over the tested clusters
+#'       `n_converts` (converts), pooled over the tested clusters. Converts are counted once per
+#'       patient (see [pooled_convert_overlap()]), not per isolate or per cluster.
+#'       A sequential row counts only the converts without a concurrent overlap explanation at the
+#'       same level (e.g. `seq_room` covers converts with no concurrent `room` overlap)
 #'     \item `permuted`: A numeric array of dimensions (trace type, count, nperm) holding the same
 #'       two sums for every permutation
 #'     \item `valid_clusters`: A numeric vector of the cluster IDs tested — those with more than one
 #'       patient, plus the single-patient acquisition clusters when `include_singleton_acq` is TRUE
 #'     }
 #'
-#'   The pooled, convert-weighted overlap fraction is `n_overlap / n_converts`; summing the counts
+#'   The pooled, patient-weighted overlap fraction is `n_overlap / n_converts`; summing the counts
 #'   across sequence types before dividing pools them further.
 #'
 #'   A permutation whose cluster assignment strands (capacity too concentrated to place
@@ -123,8 +126,8 @@ cluster_overlap_perm_test <- function(
 # Helper functions for permutation tests
 # =============================================================================
 
-#' Converts with overlap and converts, summed over the given clusters, for each precomputed
-#' isolate-isolate overlap table
+#' Convert patients with overlap and convert patients, pooled once per patient over the given
+#' clusters, for each precomputed isolate-isolate overlap table
 #' @param iso_overlaps Named list of isolate-pair overlap tables, one per trace type.
 #' @return A matrix with one row per trace type and columns `n_overlap`, `n_converts`.
 #' @noRd
@@ -135,16 +138,35 @@ pooled_overlap_counts <- function(
     include_singleton_acq = FALSE
 ) {
     lookup_filtered <- isolate_lookup[isolate_lookup$cluster %in% valid_clusters, ]
-    t(vapply(
+    cluster_dfs <- lapply(
         iso_overlaps,
-        function(iso_overlap_df) {
-            fr <- fraction_convert_events_with_overlap(
-                cluster_isolate_overlap(lookup_filtered, iso_overlap_df, include_singleton_acq),
-                lookup_filtered
-            )
-            c(n_overlap = sum(attr(fr, "n_overlap")), n_converts = sum(attr(fr, "n_converts")))
-        },
-        numeric(2)
+        cluster_isolate_overlap,
+        isolate_lookup = lookup_filtered,
+        include_singleton_acq = include_singleton_acq
+    )
+
+    # A sequential trace type is evaluated only over the convert patients its concurrent
+    # counterpart leaves unexplained: an acquisition with a same-time explanation at that level
+    # needs no sequential one, and scoring it as "no sequential overlap" would penalise exactly the
+    # clusters with the strongest contact. Converts are counted once per patient (as
+    # pooled_convert_overlap() counts them), so a patient with any concurrently explained isolate is
+    # dropped from the sequential evaluation as a whole.
+    patient_of <- function(df) {
+        lookup_filtered$patient_id[match(df$isolate_id, lookup_filtered$isolate_id)]
+    }
+    for (seq_type in grep("^seq_", names(cluster_dfs), value = TRUE)) {
+        concurrent <- cluster_dfs[[sub("^seq_", "", seq_type)]]
+        explained <- patient_of(concurrent)[concurrent$overlap %in% TRUE]
+        seq_df <- cluster_dfs[[seq_type]]
+        seq_df$overlap[patient_of(seq_df) %in% explained] <- NA
+        cluster_dfs[[seq_type]] <- seq_df
+    }
+
+    t(vapply(
+        cluster_dfs,
+        pooled_convert_overlap,
+        FUN.VALUE = numeric(2),
+        isolate_lookup = lookup_filtered
     ))
 }
 

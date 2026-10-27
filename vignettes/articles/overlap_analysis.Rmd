@@ -68,14 +68,14 @@ The converts are the patients we most want to explain: each one acquired the org
 
 # Overlap between isolates
 
-The raw ingredient is the overlap between *pairs* of isolates. `isolate_isolate_overlap()` takes the lookup and a patient-by-date trace matrix (here `facility_trace`, marking which facility each patient was in on each day) and, for every ordered donor-recipient pair, counts the days on which the two patients were in the same place. The window it searches runs from the donor's previous surveillance date up to the recipient's collection date — the period during which the donor could plausibly have transmitted to the recipient before the recipient's positive isolate was collected.
+The raw ingredient is the overlap between *pairs* of isolates. `isolate_isolate_overlap()` takes the lookup and a patient-by-date trace matrix (here `facility_trace`, marking which facility each patient was in on each day) and, for every ordered donor-recipient pair, counts the days on which the two patients were in the same place. The window it searches runs from the later of the donor's previous surveillance date and the recipient's last negative screen, up to the recipient's collection date. A recipient known to be negative on a given day was not yet colonized then, so contact before that screen cannot explain its positive isolate and is not counted — except within `grace_days` (3 by default) of the screen, since a colonization acquired just before a swab may not yet be detectable. A pair must also share a location on at least `min_overlap_days` days (2 by default), so that a same-day bed turnover — one patient leaving and another arriving, which the daily trace records as both being present — is not taken as contact.
 
 ```{r iso_overlap}
 iso_overlap <- isolate_isolate_overlap(isolate_lookup, facility_trace)
 head(iso_overlap)
 ```
 
-This is *concurrent* overlap: the two patients were physically co-located at the same time. `isolate_isolate_sequential_overlap()` instead captures *indirect* overlap, where the recipient later occupies a location the donor had been in earlier — a possible environmental or intermediary route. Pairs with any concurrent co-location are excluded from the sequential count, so the two notions do not double-count the same contact.
+This is *concurrent* overlap: the two patients were physically co-located at the same time. `isolate_isolate_sequential_overlap()` instead captures *indirect* overlap, where the recipient later occupies a location the donor had been in earlier — a possible environmental or intermediary route. Only the recipient's days after its last negative screen count, while the donor's occupancy counts from its own window start, since a location can stay contaminated after the donor leaves. The sequential count is a pure pair-level number; `cluster_overlap_perm_test()` evaluates it only for the converts that have no concurrent explanation at the same level, so the two notions do not double-count the same acquisition.
 
 # From isolate pairs to cluster explanations
 
@@ -98,13 +98,15 @@ Most multi-patient clusters fall into the explained `patient-to-patient` categor
 
 # Convert events with overlap
 
-To summarize a whole clustering with a single number, `fraction_convert_events_with_overlap()` reduces the cluster-level overlaps to the fraction of *convert events* (previous-negative patients who then turned positive) that have an overlap explanation. It returns the per-cluster fractions, but also carries the per-cluster numerator (`n_overlap`) and denominator (`n_converts`) as attributes, so that clusters can be pooled by their number of converts rather than averaged as equal-weight fractions:
+To summarize a whole clustering with a single number, `fraction_convert_events_with_overlap()` reduces the cluster-level overlaps to the fraction of *convert events* (previous-negative patients who then turned positive) that have an overlap explanation. Convert events are counted per patient, not per isolate: a patient with several sequenced isolates (e.g. two genomes from one culture) is one event, explained if any of those isolates is. It returns the per-cluster fractions, carrying the per-cluster numerator (`n_overlap`) and denominator (`n_converts`) as attributes. To summarize across clusters, `pooled_convert_overlap()` counts each convert patient once over all clusters — even when their genomes fall in more than one cluster — rather than averaging the per-cluster fractions as if each cluster weighed the same:
 
 ```{r convert_fraction}
 convert_overlap <- fraction_convert_events_with_overlap(cluster_overlap, isolate_lookup)
+head(convert_overlap)
 
-# convert-weighted pooled fraction across all clusters
-sum(attr(convert_overlap, "n_overlap")) / sum(attr(convert_overlap, "n_converts"))
+# patient-weighted pooled fraction across all clusters
+pooled <- pooled_convert_overlap(cluster_overlap, isolate_lookup)
+pooled[["n_overlap"]] / pooled[["n_converts"]]
 ```
 
 # Is the overlap more than chance?

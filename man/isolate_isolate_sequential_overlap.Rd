@@ -4,7 +4,7 @@
 \alias{isolate_isolate_sequential_overlap}
 \title{Calculate isolate-isolate sequential overlap}
 \usage{
-isolate_isolate_sequential_overlap(isolate_lookup, trace_mat)
+isolate_isolate_sequential_overlap(isolate_lookup, trace_mat, grace_days = 3L)
 }
 \arguments{
 \item{isolate_lookup}{A lookup table for isolates and their cluster assignments with other
@@ -12,6 +12,9 @@ relevant epidemiological information. See \code{\link[=get_isolate_lookup]{get_i
 
 \item{trace_mat}{A patient-by-date matrix of location occupancy (patients in rows, dates in
 columns); a positive value marks a patient's location on a given day.}
+
+\item{grace_days}{Days before the recipient's last negative screen that still count, allowing
+for a recent colonization the screen did not yet detect.}
 }
 \value{
 A data frame with columns \code{iso_donor}, \code{iso_recipient} and \code{overlap_days}.
@@ -19,6 +22,12 @@ A data frame with columns \code{iso_donor}, \code{iso_recipient} and \code{overl
 \description{
 For every ordered pair of isolates, counts the days on which the recipient was at a location the
 donor had occupied on a strictly earlier day, capturing potential indirect transmission via a
-shared location. Pairs with any concurrent co-location are excluded, since that is direct
-overlap and is handled by \code{\link[=isolate_isolate_overlap]{isolate_isolate_overlap()}}.
+shared location. The donor's occupancy counts from the donor's previous surveillance date (the
+location may stay contaminated after the donor leaves), but the recipient's days count only from
+its last known negative screen (less \code{grace_days}), as in \code{\link[=isolate_isolate_overlap]{isolate_isolate_overlap()}}.
+
+This is a pure pair-level count: pairs that were also concurrently co-located are not zeroed
+here. Whether a recipient's acquisition already has a same-time explanation is a property of the
+recipient and its whole cluster, not of one pair, so that exclusion is applied at the cluster
+level (see \code{\link[=cluster_overlap_perm_test]{cluster_overlap_perm_test()}}).
 }

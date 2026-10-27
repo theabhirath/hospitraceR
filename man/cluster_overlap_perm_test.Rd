@@ -53,14 +53,17 @@ A list containing:
 \itemize{
 \item \code{observed}: A matrix with one row per trace type (facility, floor, room,
 seq_facility, seq_floor, seq_room) and columns \code{n_overlap} (converts with overlap) and
-\code{n_converts} (converts), each summed over the tested clusters
+\code{n_converts} (converts), pooled over the tested clusters. Converts are counted once per
+patient (see \code{\link[=pooled_convert_overlap]{pooled_convert_overlap()}}), not per isolate or per cluster.
+A sequential row counts only the converts without a concurrent overlap explanation at the
+same level (e.g. \code{seq_room} covers converts with no concurrent \code{room} overlap)
 \item \code{permuted}: A numeric array of dimensions (trace type, count, nperm) holding the same
 two sums for every permutation
 \item \code{valid_clusters}: A numeric vector of the cluster IDs tested — those with more than one
 patient, plus the single-patient acquisition clusters when \code{include_singleton_acq} is TRUE
 }
 
-The pooled, convert-weighted overlap fraction is \code{n_overlap / n_converts}; summing the counts
+The pooled, patient-weighted overlap fraction is \code{n_overlap / n_converts}; summing the counts
 across sequence types before dividing pools them further.
 
 A permutation whose cluster assignment strands (capacity too concentrated to place

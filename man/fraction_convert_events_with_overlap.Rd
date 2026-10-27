@@ -14,29 +14,34 @@ fraction_convert_events_with_overlap(cluster_overlap_df, isolate_lookup)
 relevant epidemiological information. See \code{\link[=get_isolate_lookup]{get_isolate_lookup()}}.}
 }
 \value{
-A named numeric vector with the fraction of convert events with overlap for each
-cluster (\code{NA} for clusters with no convert events), carrying the per-cluster \code{n_overlap}
+A named numeric vector with the fraction of convert events (patients) with overlap for
+each cluster (\code{NA} for clusters with no convert events), carrying the per-cluster \code{n_overlap}
 and \code{n_converts} counts as attributes.
 }
 \description{
 Reduces the cluster-level overlaps to, for each cluster, the fraction of convert events that have
 an overlap explanation.
 
-A convert event is an isolate where (1) the patient has no admission-positive
-isolates, and (2) the patient had a prior negative surveillance before this
-positive isolate. Criterion (2) is taken from the \code{prev_surv_neg} flag in the
-lookup (see \code{\link[=get_isolate_lookup]{get_isolate_lookup()}}): TRUE only when a surveillance exists before
-the isolate date and none of those prior surveillances were positive. Checking
-the previous surveillance date alone is not enough, since that prior surveillance
-may itself have been positive (meaning the patient was already colonized rather
-than converting). Each qualifying isolate counts as one convert event, and a
-convert event with an overlap explanation is a convert event with overlap. The
-per-cluster fraction is \code{convert_events_with_overlap / convert_events}.
+A convert event is counted \strong{per patient}: one patient's acquisition within one cluster. A
+convert isolate is one where (1) the patient has no admission-positive isolates, and (2) the
+patient had a prior negative surveillance before this positive isolate. Criterion (2) is taken
+from the \code{prev_surv_neg} flag in the lookup (see \code{\link[=get_isolate_lookup]{get_isolate_lookup()}}): TRUE only when a
+surveillance exists before the isolate date and none of those prior surveillances were
+positive. Checking the previous surveillance date alone is not enough, since that prior
+surveillance may itself have been positive (meaning the patient was already colonized rather
+than converting). A patient with several convert isolates in a cluster (e.g. two genomes from one
+culture) is still one convert event, so sequencing depth does not weight the count; the event has
+an overlap explanation when any of those isolates does. Per cluster, a patient whose isolates
+fall in two clusters appears in both; for totals across clusters use \code{\link[=pooled_convert_overlap]{pooled_convert_overlap()}},
+which counts each patient once. The per-cluster fraction is
+\code{convert_events_with_overlap / convert_events}. Convert isolates whose \code{overlap} is \code{NA} in
+\code{cluster_overlap_df} were excluded from the evaluation; a patient all of whose convert isolates
+are \code{NA} is left out of both counts.
 
 The per-cluster counts that make up each fraction are also returned, as the
 attributes \code{n_overlap} (convert events with overlap, the numerator) and
-\code{n_converts} (convert events, the denominator). These let callers aggregate a
-pooled, convert-weighted fraction across clusters
-(\code{sum(n_overlap) / sum(n_converts)}) instead of averaging the per-cluster
-fractions, which would ignore how many convert events each cluster contributes.
+\code{n_converts} (convert events, the denominator). To pool across clusters, use
+\code{\link[=pooled_convert_overlap]{pooled_convert_overlap()}} rather than averaging the per-cluster fractions (which
+would ignore how many convert events each cluster contributes) or summing these
+counts (which would count a patient spanning two clusters twice).
 }

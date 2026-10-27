@@ -70,6 +70,7 @@ reference:
       - isolate_isolate_sequential_overlap
       - cluster_isolate_overlap
       - fraction_convert_events_with_overlap
+      - pooled_convert_overlap
       - categorize_cluster_overlap
       - flatten_cluster_overlap_categorization
       - cluster_overlap_perm_test
